@@ -1,3 +1,4 @@
+import pandas as pd
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QSpinBox, QGridLayout, QFormLayout, QMessageBox, QSpacerItem, QSizePolicy, QTextEdit
@@ -45,7 +46,6 @@ class SimplexSolutionWindow(QWidget):
         else:
             self.solution_text.append("" + step_text)
         self.solution_text.append(step_text)
-
 
     def prev_step(self):
         if self.current_step_index > 0:
@@ -257,7 +257,7 @@ class SimplexCalculator(QWidget):
             rhs = QLineEdit()
             rhs.setValidator(QDoubleValidator(-9999, 9999, 5))
             rhs.setPlaceholderText("0")  # Default placeholder
-            rhs.setStyleSheet("font-size: 12pt;")
+            rhs.setStyleSheet("font-size: 12.5pt;")
             rhs.setFixedWidth(35)
             constraint_centered_layout.addWidget(rhs)
 
@@ -265,8 +265,68 @@ class SimplexCalculator(QWidget):
             self.constraints_layout.addLayout(constraint_centered_layout)
 
     def solve(self):
-        # Placeholder for the solving logic
+        # Get the values of the goal function and constraints
+        goal_values = [float(field.text() if field.text() else 0) for field in self.goal_inputs]
+        if self.goal_type.currentText() == "max":
+            goal_values = [-val for val in goal_values]
+        goal_row = [0] + goal_values
+
+        constraints = []
+        row_names = []
+        num_vars = self.num_vars_spin.value()
+        current_variable_index = num_vars + 1
+        slack_variable_index = num_vars + 1
+
+        for i in range(self.constraints_layout.count()):
+            layout = self.constraints_layout.itemAt(i).layout()
+            constraint_values = []
+            relation = None
+            for j in range(layout.count()):
+                widget = layout.itemAt(j).widget()
+                if isinstance(widget, QLineEdit):
+                    constraint_values.append(float(widget.text() if widget.text() else 0))
+                elif isinstance(widget, QComboBox):
+                    relation = widget.currentText()
+            rhs_value = constraint_values.pop()  # RHS value
+
+            # Handle slack/surplus/equality variables properly
+            if relation == "≥":
+                constraint_values = [rhs_value] + [-val for val in constraint_values]
+                row_names.append(f"x{slack_variable_index}")  # Surplus variable
+                slack_variable_index += 1
+            elif relation == "≤":
+                constraint_values = [rhs_value] + constraint_values
+                row_names.append(f"x{slack_variable_index}")  # Slack variable
+                slack_variable_index += 1
+            else:  # For equality, treat it as a slack variable row without adding it to columns
+                constraint_values = [rhs_value] + constraint_values
+                row_names.append(f"x{i + num_vars + 1}")
+                # This variable should be a slack, but do not add to decision variable columns
+
+            constraints.append(constraint_values)
+
+        # Create the initial simplex tableau using pandas
+        # Columns will only include the decision variables without adding slack variables as new columns
+        columns = ["Si"] + [f"x{i+1}" for i in range(num_vars)]
+        row_names.append("F")  # Add objective function row name
+
+        # Adjust each row to have the correct number of elements for the tableau
+        for constraint in constraints:
+            while len(constraint) < len(columns):
+                constraint.append(0.0)  # Fill in zeroes for any slack variables not in that row
+        tableau_data = constraints + [goal_row]
+
+        # Ensure the goal row also has the correct length
+        while len(goal_row) < len(columns):
+            goal_row.append(0.0)
+
+        # Create dataframe for tableau
+        df = pd.DataFrame(tableau_data, columns=columns, index=row_names)
+
+        # Display the initial tableau to the user
         self.solution_window = SimplexSolutionWindow()
+        self.solution_window.add_step("Initial Simplex Tableau:")
+        self.solution_window.add_step(df.to_string())
         self.solution_window.show()
 
 

@@ -1,0 +1,39 @@
+name: Build exe, deb
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Package Application
+      uses: JackMcKew/pyinstaller-action-windows@main
+      with:
+        path: app-release
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Simplex_Method
+        path: app-release/dist/windows
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Package Application
+        uses: JackMcKew/pyinstaller-action-linux@main
+        with:
+          path: app-release
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Simplex_Method
+          path: app-release/dist/linux

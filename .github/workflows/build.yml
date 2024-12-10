@@ -6,8 +6,8 @@ on:
       - 'v*'
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+  build-win:
+    runs-on: ['windows-latest']
     strategy:
       fail-fast: false
       matrix:
@@ -24,6 +24,22 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         path: dist/*
+        name: windows
+
+  build-lin:
+    runs-on: [ 'ubuntu-latest' ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - run: pip install -r ./app/requirements.txt pyinstaller
+      - run: pyinstaller --onefile --windowed --name "Simplex Method" --icon=app/icons/solution.ico --add-data=app/icons/*.ico:icons app/main.py
+      - uses: actions/upload-artifact@v4
+        with:
+          path: dist/*
+          name: linux
 
   build-mac:
     runs-on: ['macos-latest']

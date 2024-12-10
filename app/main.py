@@ -43,7 +43,7 @@ class SimplexCalculator(QWidget):
         self.num_vars_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.num_vars_spin.setMinimum(1)  # Minimum of 1 variable
         self.num_vars_spin.setMaximum(10)
-        self.num_vars_spin.setStyleSheet("font-size: 12.5pt; border: none;")
+        self.num_vars_spin.setStyleSheet("font-size: 12.5pt;")
         self.num_vars_spin.setFixedWidth(60)
         self.num_vars_spin.setValue(3)  # Default to 3 variables
         self.num_vars_spin.valueChanged.connect(self.update_fields)
@@ -68,7 +68,7 @@ class SimplexCalculator(QWidget):
         self.num_constraints_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.num_constraints_spin.setMinimum(1)
         self.num_constraints_spin.setMaximum(10)
-        self.num_constraints_spin.setStyleSheet("font-size: 12.5pt; border: none;")
+        self.num_constraints_spin.setStyleSheet("font-size: 12.5pt;")
         self.num_constraints_spin.setFixedWidth(60)
         self.num_constraints_spin.setValue(3)  # Default to 3 constraints
         self.num_constraints_spin.valueChanged.connect(self.update_fields)
@@ -157,7 +157,7 @@ class SimplexCalculator(QWidget):
             input_field = QLineEdit()
             input_field.setValidator(QDoubleValidator(-9999, 9999, 5))
             input_field.setPlaceholderText("0")  # Default placeholder
-            input_field.setStyleSheet("font-size: 12pt; border: none;")
+            input_field.setStyleSheet("font-size: 12pt;")
             input_field.setFixedWidth(45)  # Smaller box size
             self.goal_inputs.append(input_field)
             self.goal_layout.addWidget(input_field)
@@ -193,7 +193,7 @@ class SimplexCalculator(QWidget):
 
                 input_field = QLineEdit()
                 input_field.setValidator(QDoubleValidator(-9999, 9999, 5))
-                input_field.setStyleSheet("font-size: 12pt; border: none;")
+                input_field.setStyleSheet("font-size: 12pt;")
                 input_field.setPlaceholderText("0")  # Default placeholder
                 input_field.setFixedWidth(45)  # Smaller box size
                 constraint_centered_layout.addWidget(input_field)
@@ -214,7 +214,7 @@ class SimplexCalculator(QWidget):
             rhs = QLineEdit()
             rhs.setValidator(QDoubleValidator(-9999, 9999, 5))
             rhs.setPlaceholderText("0")  # Default placeholder
-            rhs.setStyleSheet("font-size: 12.5pt; border: none;")
+            rhs.setStyleSheet("font-size: 12.5pt;")
             rhs.setFixedWidth(45)
             constraint_centered_layout.addWidget(rhs)
 

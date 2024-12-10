@@ -20,7 +20,7 @@ jobs:
         python-version: 3.12
 
     - run: pip install -r ./app/requirements.txt pyinstaller
-    - run: pyinstaller --onefile --windowed --name "Simplex Method" --icon=./app/icons/solution.ico --add-data "./app/icons/*.ico;./icons" ./app/main.py
+    - run: pyinstaller --onefile --windowed --name "Simplex Method" --icon=./app/icons/solution.ico --add-data=./app/icons/*.ico:./icons ./app/main.py
     - uses: actions/upload-artifact@v3
       with:
         path: dist/*

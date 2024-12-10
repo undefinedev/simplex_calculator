@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['windows-latest', 'ubuntu-latest', 'macos-latest']
+        os: ['windows-latest', 'ubuntu-latest']
 
     steps:
     - uses: actions/checkout@v3
@@ -20,7 +20,22 @@ jobs:
         python-version: 3.12
 
     - run: pip install -r ./app/requirements.txt pyinstaller
-    - run: pyinstaller --onefile --windowed --name "Simplex Method" --icon=./app/icons/solution.ico --add-data=./app/icons/*.ico:./icons ./app/main.py
+    - run: pyinstaller --onefile --windowed --name "Simplex Method" --icon=app/icons/solution.ico --add-data=app/icons/*.ico:icons app/main.py
     - uses: actions/upload-artifact@v3
       with:
         path: dist/*
+
+  build-mac:
+    runs-on: ['macos-latest']
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - run: pip install -r ./app/requirements.txt pyinstaller pillow
+      - run: pyinstaller --onefile --windowed --name "Simplex Method" --icon=app/icons/solution.ico --add-data=app/icons/*.ico:icons app/main.py
+      - uses: actions/upload-artifact@v3
+        with:
+          path: dist/*

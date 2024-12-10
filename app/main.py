@@ -158,7 +158,7 @@ class SimplexCalculator(QWidget):
             input_field.setValidator(QDoubleValidator(-9999, 9999, 5))
             input_field.setPlaceholderText("0")  # Default placeholder
             input_field.setStyleSheet("font-size: 12pt;")
-            input_field.setFixedWidth(45)  # Smaller box size
+            input_field.setFixedWidth(55)  # Smaller box size
             self.goal_inputs.append(input_field)
             self.goal_layout.addWidget(input_field)
 
@@ -195,7 +195,7 @@ class SimplexCalculator(QWidget):
                 input_field.setValidator(QDoubleValidator(-9999, 9999, 5))
                 input_field.setStyleSheet("font-size: 12pt;")
                 input_field.setPlaceholderText("0")  # Default placeholder
-                input_field.setFixedWidth(45)  # Smaller box size
+                input_field.setFixedWidth(55)  # Smaller box size
                 constraint_centered_layout.addWidget(input_field)
 
                 label = QLabel(f"x<sub>{j + 1}</sub>", self)
@@ -215,7 +215,7 @@ class SimplexCalculator(QWidget):
             rhs.setValidator(QDoubleValidator(-9999, 9999, 5))
             rhs.setPlaceholderText("0")  # Default placeholder
             rhs.setStyleSheet("font-size: 12.5pt;")
-            rhs.setFixedWidth(45)
+            rhs.setFixedWidth(55)
             constraint_centered_layout.addWidget(rhs)
 
             constraint_centered_layout.addStretch(1)

@@ -20,7 +20,7 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         path: dist/Simplex_Method.exe
-        name: Simplex_Method.exe
+        name: Simplex_Method_win
 
   build-lin:
     runs-on: [ 'ubuntu-latest' ]
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: dist/Simplex_Method
-          name: Simplex_Method.deb
+          name: Simplex_Method_lin
 
   build-mac:
     runs-on: ['macos-latest']

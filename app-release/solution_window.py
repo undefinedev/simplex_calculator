@@ -67,9 +67,15 @@ class SimplexSolutionWindow(QWidget):
         self.solution_label.setStyleSheet("font-size: 12pt;")
         self.layout.addWidget(self.solution_label)
 
-        self.watermark_label = QLabel("undefinedev © 2024")
+        self.watermark_label = QLabel()
         self.watermark_label.setAlignment(Qt.AlignCenter)
-        self.watermark_label.setStyleSheet("color: rgba(128, 128, 128, 50%); font-size: 7pt;")
+        self.watermark_label.setTextFormat(Qt.RichText)
+        self.watermark_label.setOpenExternalLinks(True)
+        self.watermark_label.setText(
+            ' <span style="color: rgba(128, 128, 128, 50%); font-size: 7pt;">'
+            ' <a href="https://github.com/undefinedev/simplex_calculator" style="color: rgba(128, 128, 128, 50%); text-decoration: none;">undefinedev</a> © 2024'
+            '</span>'
+        )
         self.layout.addWidget(self.watermark_label)
 
         self.steps = []

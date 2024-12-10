@@ -16,7 +16,7 @@ from solution_window import SimplexSolutionWindow
 class SimplexCalculator(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Симплекс Метод Калькулятор v03.12.2024")
+        self.setWindowTitle("Симплекс Метод Калькулятор v1.1")
         self.initUI()
 
     def initUI(self):

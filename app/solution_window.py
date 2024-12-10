@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from fractions import Fraction
 
+
 class SimplexSolutionWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -73,7 +74,8 @@ class SimplexSolutionWindow(QWidget):
         self.watermark_label.setOpenExternalLinks(True)
         self.watermark_label.setText(
             ' <span style="color: rgba(128, 128, 128, 50%); font-size: 7pt;">'
-            ' <a href="https://github.com/undefinedev/simplex_calculator" style="color: rgba(128, 128, 128, 50%); text-decoration: none;">undefinedev</a> © 2024'
+            ' <a href="https://github.com/undefinedev/simplex_calculator" style="color: rgba(128, 128, 128, 50%);'
+            ' text-decoration: none;">undefinedev</a> © 2024'
             '</span>'
         )
         self.layout.addWidget(self.watermark_label)
@@ -86,7 +88,8 @@ class SimplexSolutionWindow(QWidget):
         self.non_basic_vars = []  # List of non-basic variable names (columns)
         self.is_maximization = False  # Flag to indicate if the original problem was maximization
 
-    def add_step(self, tableau_df, basic_vars, non_basic_vars, pivot_row_index=None, pivot_col_index=None, is_maximization=False):
+    def add_step(self, tableau_df, basic_vars, non_basic_vars, pivot_row_index=None, pivot_col_index=None,
+                 is_maximization=False):
         """
         Add a new step to the steps list.
         """
@@ -163,7 +166,8 @@ class SimplexSolutionWindow(QWidget):
         # Update navigation buttons
         self.update_navigation_buttons()
 
-    def display_tableau(self, table_widget, tableau_df, basic_vars, non_basic_vars, pivot_row_index=None, pivot_col_index=None):
+    def display_tableau(self, table_widget, tableau_df, basic_vars, non_basic_vars, pivot_row_index=None,
+                        pivot_col_index=None):
         """
         Display the given tableau DataFrame in the provided QTableWidget.
         """
@@ -257,7 +261,7 @@ class SimplexSolutionWindow(QWidget):
                         # First negative in this row is pivot element
                         pivot_col_index = negative_cols[0]
 
-                        # Before performing the pivot operation, save the current tableau with the pivot element highlighted
+                        # Before performing the pivot operation, save current tableau with the pivot element highlighted
                         self.steps[-1]['pivot_row_index'] = pivot_row_index
                         self.steps[-1]['pivot_col_index'] = pivot_col_index
                         # Perform pivot operation

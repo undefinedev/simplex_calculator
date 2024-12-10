@@ -27,7 +27,7 @@ class SimplexCalculator(QWidget):
 
         # Top Section: Number of Variables and Constraints
         top_layout = QHBoxLayout()
-        top_layout.setSpacing(10)  # Reduce spacing between elements
+        top_layout.setSpacing(1)  # Reduce spacing between elements
         top_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)  # Align the top section to the left
         label_vars = QLabel("Количество переменных:")
         label_vars.setStyleSheet("font-size: 11.5pt;")
@@ -43,8 +43,8 @@ class SimplexCalculator(QWidget):
         self.num_vars_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.num_vars_spin.setMinimum(1)  # Minimum of 1 variable
         self.num_vars_spin.setMaximum(10)
-        self.num_vars_spin.setStyleSheet("font-size: 12.5pt;")
-        self.num_vars_spin.setFixedWidth(70)
+        self.num_vars_spin.setStyleSheet("font-size: 12.5pt; border: none;")
+        self.num_vars_spin.setFixedWidth(60)
         self.num_vars_spin.setValue(3)  # Default to 3 variables
         self.num_vars_spin.valueChanged.connect(self.update_fields)
         top_layout.addWidget(self.num_vars_spin)
@@ -54,7 +54,7 @@ class SimplexCalculator(QWidget):
         self.num_vars_plus_button.clicked.connect(lambda: self.change_spin_value(self.num_vars_spin, 1))
         top_layout.addWidget(self.num_vars_plus_button)
 
-        label_constraints = QLabel("Количество ограничений:")
+        label_constraints = QLabel("    Количество ограничений:")
         label_constraints.setStyleSheet("font-size: 11.5pt;")
         top_layout.addWidget(label_constraints)
 
@@ -68,8 +68,8 @@ class SimplexCalculator(QWidget):
         self.num_constraints_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.num_constraints_spin.setMinimum(1)
         self.num_constraints_spin.setMaximum(10)
-        self.num_constraints_spin.setStyleSheet("font-size: 12.5pt;")
-        self.num_constraints_spin.setFixedWidth(70)
+        self.num_constraints_spin.setStyleSheet("font-size: 12.5pt; border: none;")
+        self.num_constraints_spin.setFixedWidth(60)
         self.num_constraints_spin.setValue(3)  # Default to 3 constraints
         self.num_constraints_spin.valueChanged.connect(self.update_fields)
         top_layout.addWidget(self.num_constraints_spin)
@@ -101,12 +101,13 @@ class SimplexCalculator(QWidget):
 
         # Arrow and type (min/max)
         arrow_label = QLabel("→")
-        arrow_label.setStyleSheet("font-size: 12pt;")
+        arrow_label.setStyleSheet("font-size: 13pt;")
         arrow_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         goal_layout.addWidget(arrow_label)
 
         self.goal_type = QComboBox()
         self.goal_type.addItems(["min", "max"])
+        self.goal_type.setStyleSheet("font-size: 12pt;")
         self.goal_type.setFixedWidth(70)
         self.goal_type.setCurrentText("min")  # Set 'min' as the default selection
         goal_layout.addWidget(self.goal_type)
@@ -149,19 +150,20 @@ class SimplexCalculator(QWidget):
         for i in range(num_vars):
             if i > 0:  # Add `+` only after the first variable
                 plus_label = QLabel("+")
+                plus_label.setStyleSheet("font-size: 12pt;")
                 plus_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.goal_layout.addWidget(plus_label)
 
             input_field = QLineEdit()
             input_field.setValidator(QDoubleValidator(-9999, 9999, 5))
             input_field.setPlaceholderText("0")  # Default placeholder
-            input_field.setStyleSheet("font-size: 12.5pt;")
-            input_field.setFixedWidth(35)  # Smaller box size
+            input_field.setStyleSheet("font-size: 12pt; border: none;")
+            input_field.setFixedWidth(45)  # Smaller box size
             self.goal_inputs.append(input_field)
             self.goal_layout.addWidget(input_field)
 
             label = QLabel(f"x<sub>{i + 1}</sub>", self)
-            label.setStyleSheet("font-size: 12.5pt;")
+            label.setStyleSheet("font-size: 14pt;")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.goal_layout.addWidget(label)
 
@@ -185,23 +187,26 @@ class SimplexCalculator(QWidget):
             for j in range(num_vars):
                 if j > 0:  # Add `+` only after the first variable
                     plus_label = QLabel("+")
+                    plus_label.setStyleSheet("font-size: 12pt;")
                     plus_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     constraint_centered_layout.addWidget(plus_label)
 
                 input_field = QLineEdit()
                 input_field.setValidator(QDoubleValidator(-9999, 9999, 5))
+                input_field.setStyleSheet("font-size: 12pt; border: none;")
                 input_field.setPlaceholderText("0")  # Default placeholder
-                input_field.setFixedWidth(35)  # Smaller box size
+                input_field.setFixedWidth(45)  # Smaller box size
                 constraint_centered_layout.addWidget(input_field)
 
                 label = QLabel(f"x<sub>{j + 1}</sub>", self)
-                label.setStyleSheet("font-size: 12.5pt;")
+                label.setStyleSheet("font-size: 14pt;")
                 label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 constraint_centered_layout.addWidget(label)
 
             # Add dropdown for relation
             relation = QComboBox()
             relation.addItems(["≤", "≥", "="])
+            relation.setStyleSheet("font-size: 13pt;")
             relation.setFixedWidth(40)
             constraint_centered_layout.addWidget(relation)
 
@@ -209,8 +214,8 @@ class SimplexCalculator(QWidget):
             rhs = QLineEdit()
             rhs.setValidator(QDoubleValidator(-9999, 9999, 5))
             rhs.setPlaceholderText("0")  # Default placeholder
-            rhs.setStyleSheet("font-size: 12.5pt;")
-            rhs.setFixedWidth(35)
+            rhs.setStyleSheet("font-size: 12.5pt; border: none;")
+            rhs.setFixedWidth(45)
             constraint_centered_layout.addWidget(rhs)
 
             constraint_centered_layout.addStretch(1)

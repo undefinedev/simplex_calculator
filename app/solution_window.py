@@ -1,11 +1,11 @@
 # solution_window.py
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QTableWidget, QTableWidgetItem, QLabel, QMessageBox, QFrame
+    QTableWidget, QTableWidgetItem, QLabel, QMessageBox, QFrame, QAbstractItemView
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from fractions import Fraction
 
 class SimplexSolutionWindow(QWidget):
@@ -23,8 +23,8 @@ class SimplexSolutionWindow(QWidget):
 
         self.left_label = QLabel("Current Step")
         self.right_label = QLabel("Next Step")
-        self.left_label.setAlignment(Qt.AlignCenter)
-        self.right_label.setAlignment(Qt.AlignCenter)
+        self.left_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.right_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.left_layout.addWidget(self.left_label)
         self.right_layout.addWidget(self.right_label)
 
@@ -35,12 +35,12 @@ class SimplexSolutionWindow(QWidget):
         self.right_layout.addWidget(self.right_table)
 
         # Disable editing
-        self.left_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.right_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.left_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.right_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
         # Add an arrow between the tables
         self.arrow_label = QLabel("→")
-        self.arrow_label.setAlignment(Qt.AlignCenter)
+        self.arrow_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.arrow_label.setStyleSheet("font-size: 24pt;")
 
         # Combine layouts
@@ -68,8 +68,8 @@ class SimplexSolutionWindow(QWidget):
         self.layout.addWidget(self.solution_label)
 
         self.watermark_label = QLabel()
-        self.watermark_label.setAlignment(Qt.AlignCenter)
-        self.watermark_label.setTextFormat(Qt.RichText)
+        self.watermark_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.watermark_label.setTextFormat(Qt.TextFormat.RichText)
         self.watermark_label.setOpenExternalLinks(True)
         self.watermark_label.setText(
             ' <span style="color: rgba(128, 128, 128, 50%); font-size: 7pt;">'
@@ -183,7 +183,7 @@ class SimplexSolutionWindow(QWidget):
             for j in range(cols):
                 value = tableau_df.iloc[i, j]
                 item = QTableWidgetItem(str(value))
-                item.setTextAlignment(Qt.AlignCenter)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 table_widget.setItem(i, j, item)
 
         # Adjust column widths

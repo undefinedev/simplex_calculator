@@ -2,16 +2,17 @@
 import os.path as path
 import sys
 from pandas import DataFrame
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QComboBox, QSpinBox, QMessageBox
+    QPushButton, QComboBox, QSpinBox, QMessageBox, QAbstractSpinBox
 )
-from PyQt5.QtGui import QDoubleValidator, QIcon
-from PyQt5.QtCore import Qt
+from PyQt6.QtGui import QDoubleValidator, QIcon
+from PyQt6.QtCore import Qt
 from fractions import Fraction
 
 # Import the SimplexSolutionWindow from solution_window.py
 from solution_window import SimplexSolutionWindow
+
 
 class SimplexCalculator(QWidget):
     def __init__(self):
@@ -22,12 +23,12 @@ class SimplexCalculator(QWidget):
     def initUI(self):
         # Main Layout
         self.layout = QVBoxLayout()
-        self.layout.setAlignment(Qt.AlignTop)
+        self.layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Top Section: Number of Variables and Constraints
         top_layout = QHBoxLayout()
         top_layout.setSpacing(10)  # Reduce spacing between elements
-        top_layout.setAlignment(Qt.AlignLeft)  # Align the top section to the left
+        top_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)  # Align the top section to the left
         label_vars = QLabel("Количество переменных:")
         label_vars.setStyleSheet("font-size: 11.5pt;")
         top_layout.addWidget(label_vars)
@@ -39,7 +40,7 @@ class SimplexCalculator(QWidget):
         top_layout.addWidget(self.num_vars_minus_button)
 
         self.num_vars_spin = QSpinBox()
-        self.num_vars_spin.setButtonSymbols(QSpinBox.NoButtons)
+        self.num_vars_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.num_vars_spin.setMinimum(1)  # Minimum of 1 variable
         self.num_vars_spin.setMaximum(10)
         self.num_vars_spin.setStyleSheet("font-size: 12.5pt;")
@@ -64,7 +65,7 @@ class SimplexCalculator(QWidget):
         top_layout.addWidget(self.num_constraints_minus_button)
 
         self.num_constraints_spin = QSpinBox()
-        self.num_constraints_spin.setButtonSymbols(QSpinBox.NoButtons)
+        self.num_constraints_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.num_constraints_spin.setMinimum(1)
         self.num_constraints_spin.setMaximum(10)
         self.num_constraints_spin.setStyleSheet("font-size: 12.5pt;")
@@ -82,17 +83,17 @@ class SimplexCalculator(QWidget):
 
         # Goal Function Section
         goal_container_layout = QHBoxLayout()
-        goal_container_layout.setAlignment(Qt.AlignLeft)
+        goal_container_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         goal_layout = QHBoxLayout()
         goal_layout.setSpacing(10)
-        goal_layout.setAlignment(Qt.AlignCenter)  # Align goal function section to the center
+        goal_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Align goal function section to the center
         goal_label = QLabel("Целевая функция:")
         goal_label.setStyleSheet("font-size: 11.5pt;")
         goal_layout.addWidget(goal_label)
 
         self.goal_layout = QHBoxLayout()
         self.goal_layout.setSpacing(5)
-        self.goal_layout.setAlignment(Qt.AlignLeft)
+        self.goal_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.goal_inputs = []
 
         goal_layout.addLayout(self.goal_layout)
@@ -101,7 +102,7 @@ class SimplexCalculator(QWidget):
         # Arrow and type (min/max)
         arrow_label = QLabel("→")
         arrow_label.setStyleSheet("font-size: 12pt;")
-        arrow_label.setAlignment(Qt.AlignLeft)
+        arrow_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         goal_layout.addWidget(arrow_label)
 
         self.goal_type = QComboBox()
@@ -117,14 +118,14 @@ class SimplexCalculator(QWidget):
         # Constraints Section
         self.constraints_layout = QVBoxLayout()
         self.constraints_layout.setSpacing(5)  # Reduce spacing between constraints
-        self.constraints_layout.setAlignment(Qt.AlignTop)  # Align constraints layout to the top
+        self.constraints_layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Align constraints layout to the top
         self.layout.addLayout(self.constraints_layout)
 
         # Solve Button
         self.solve_button = QPushButton("Решить")
         self.solve_button.setFixedWidth(100)
         self.solve_button.clicked.connect(self.solve)
-        self.layout.addWidget(self.solve_button, alignment=Qt.AlignCenter)
+        self.layout.addWidget(self.solve_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.setLayout(self.layout)
         self.update_fields()
@@ -148,20 +149,20 @@ class SimplexCalculator(QWidget):
         for i in range(num_vars):
             if i > 0:  # Add `+` only after the first variable
                 plus_label = QLabel("+")
-                plus_label.setAlignment(Qt.AlignCenter)
+                plus_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.goal_layout.addWidget(plus_label)
 
             input_field = QLineEdit()
             input_field.setValidator(QDoubleValidator(-9999, 9999, 5))
             input_field.setPlaceholderText("0")  # Default placeholder
-            input_field.setStyleSheet("font-size: 12pt;")
+            input_field.setStyleSheet("font-size: 12.5pt;")
             input_field.setFixedWidth(35)  # Smaller box size
             self.goal_inputs.append(input_field)
             self.goal_layout.addWidget(input_field)
 
             label = QLabel(f"x<sub>{i + 1}</sub>", self)
-            label.setStyleSheet("font-size: 12pt;")
-            label.setAlignment(Qt.AlignCenter)
+            label.setStyleSheet("font-size: 12.5pt;")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.goal_layout.addWidget(label)
 
         # Update Constraint Fields
@@ -178,13 +179,13 @@ class SimplexCalculator(QWidget):
         num_vars = self.num_vars_spin.value()
         for i in range(num_constraints):
             constraint_centered_layout = QHBoxLayout()
-            constraint_centered_layout.setAlignment(Qt.AlignCenter)  # Align constraints to the center
+            constraint_centered_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Align constraints to the center
             constraint_centered_layout.addStretch(1)
 
             for j in range(num_vars):
                 if j > 0:  # Add `+` only after the first variable
                     plus_label = QLabel("+")
-                    plus_label.setAlignment(Qt.AlignCenter)
+                    plus_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     constraint_centered_layout.addWidget(plus_label)
 
                 input_field = QLineEdit()
@@ -194,8 +195,8 @@ class SimplexCalculator(QWidget):
                 constraint_centered_layout.addWidget(input_field)
 
                 label = QLabel(f"x<sub>{j + 1}</sub>", self)
-                label.setStyleSheet("font-size: 12pt;")
-                label.setAlignment(Qt.AlignCenter)
+                label.setStyleSheet("font-size: 12.5pt;")
+                label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 constraint_centered_layout.addWidget(label)
 
             # Add dropdown for relation
@@ -326,10 +327,10 @@ class SimplexCalculator(QWidget):
                             "Отсутствует базисная переменная",
                             f"В ограничении {idx + 1} нет переменной с коэффициентом 1 или -1, которая уникальна.\n"
                             "Хотите автоматически добавить новую базисную переменную?",
-                            QMessageBox.Yes | QMessageBox.No,
-                            QMessageBox.Yes
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                            QMessageBox.StandardButton.Yes
                         )
-                        if reply == QMessageBox.Yes:
+                        if reply == QMessageBox.StandardButton.Yes:
                             # Automatically assign a new basic variable
                             next_num = num_vars + len(added_basic_vars) + 1
                             new_basic_var = f"X{next_num}"
@@ -432,6 +433,7 @@ class SimplexCalculator(QWidget):
             )
             return
 
+
 if __name__ == "__main__":
     APP_PATH = ""
     if getattr(sys, "frozen", False):
@@ -445,4 +447,4 @@ if __name__ == "__main__":
     window = SimplexCalculator()
     window.resize(800, 600)  # Adjusted initial window size
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

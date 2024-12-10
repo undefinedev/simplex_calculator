@@ -10,39 +10,39 @@ jobs:
     runs-on: ['windows-latest']
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
         python-version: 3.12
 
     - run: pip install -r ./app/requirements.txt pyinstaller
-    - run: pyinstaller --onefile --windowed --name "Simplex Method" --icon=app/icons/solution.ico --add-data=app/icons/*.ico:icons app/main.py
+    - run: pyinstaller --onefile --windowed --name "Simplex_Method" --icon=app/icons/solution.ico --add-data=app/icons/*.ico:icons app/main.py
     - uses: actions/upload-artifact@v4
       with:
-        path: dist/*
-        name: windows
+        path: dist/Simplex_Method.exe
+        name: Simplex_Method.exe
 
   build-lin:
     runs-on: [ 'ubuntu-latest' ]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: 3.12
 
       - run: pip install -r ./app/requirements.txt pyinstaller
-      - run: pyinstaller --onefile --windowed --name "Simplex Method" --icon=app/icons/solution.ico --add-data=app/icons/*.ico:icons app/main.py
+      - run: pyinstaller --onefile --windowed --name "Simplex_Method" --icon=app/icons/solution.ico --add-data=app/icons/*.ico:icons app/main.py
       - uses: actions/upload-artifact@v4
         with:
-          path: dist/*
-          name: linux
+          path: dist/Simplex_Method
+          name: Simplex_Method.deb
 
   build-mac:
     runs-on: ['macos-latest']
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: 3.12

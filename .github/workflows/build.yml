@@ -8,10 +8,6 @@ on:
 jobs:
   build-win:
     runs-on: ['windows-latest']
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['windows-latest', 'ubuntu-latest']
 
     steps:
     - uses: actions/checkout@v3
@@ -28,6 +24,7 @@ jobs:
 
   build-lin:
     runs-on: [ 'ubuntu-latest' ]
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v5

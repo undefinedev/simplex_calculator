@@ -1,39 +1,27 @@
-name: Build exe, deb
+name: Build cross platform
 
 on:
   push:
     tags:
       - 'v*'
+    branches: [ master ]
 
 jobs:
-  build-windows:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['windows-latest', 'ubuntu-latest', 'macos-latest', 'macos-latest-large']
 
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Package Application
-      uses: JackMcKew/pyinstaller-action-windows@main
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v5
       with:
-        path: app
+        python-version: 3.12
 
-    - uses: actions/upload-artifact@v4
+    - run: pip install -r requirements.txt pyinstaller
+    - run: pyinstaller --onefile --windowed --name "Simplex Method" --icon=./app/icons/solution.ico --add-data "./app/icons/*.ico;./icons" ./app/main.py
+    - uses: actions/upload-artifact@v3
       with:
-        name: Simplex_Method
-        path: app/dist/windows
-
-  build-linux:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Package Application
-        uses: JackMcKew/pyinstaller-action-linux@main
-        with:
-          path: app
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Simplex_Method
-          path: app/dist/linux
+        path: dist/*

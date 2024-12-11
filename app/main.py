@@ -42,7 +42,7 @@ class SimplexCalculator(QWidget):
         self.num_vars_spin = QSpinBox()
         self.num_vars_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.num_vars_spin.setMinimum(1)  # Minimum of 1 variable
-        self.num_vars_spin.setMaximum(100)
+        self.num_vars_spin.setMaximum(12)
         self.num_vars_spin.setStyleSheet("font-size: 12.5pt;")
         self.num_vars_spin.setFixedWidth(60)
         self.num_vars_spin.setValue(3)  # Default to 3 variables
@@ -67,7 +67,7 @@ class SimplexCalculator(QWidget):
         self.num_constraints_spin = QSpinBox()
         self.num_constraints_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.num_constraints_spin.setMinimum(1)
-        self.num_constraints_spin.setMaximum(100)
+        self.num_constraints_spin.setMaximum(12)
         self.num_constraints_spin.setStyleSheet("font-size: 12.5pt;")
         self.num_constraints_spin.setFixedWidth(60)
         self.num_constraints_spin.setValue(3)  # Default to 3 constraints
@@ -448,6 +448,7 @@ if __name__ == "__main__":
     else:
         pass
     app = QApplication(sys.argv)
+    app.setStyle("Fusion")
     app.setWindowIcon(QIcon(path.join(APP_PATH, "icons/solution.ico")))
     window = SimplexCalculator()
     window.resize(800, 600)  # Adjusted initial window size

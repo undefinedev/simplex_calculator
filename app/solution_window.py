@@ -52,8 +52,8 @@ class SimplexSolutionWindow(QWidget):
 
         # Add navigation buttons
         self.navigation_layout = QHBoxLayout()
-        self.prev_button = QPushButton("Previous Steps")
-        self.next_button = QPushButton("Next Steps")
+        self.prev_button = QPushButton("Предыдущий шаг")
+        self.next_button = QPushButton("Следующий шаг")
         self.prev_button.setEnabled(False)
         self.next_button.setEnabled(False)
         self.prev_button.clicked.connect(self.prev_steps)
@@ -143,7 +143,7 @@ class SimplexSolutionWindow(QWidget):
                 step_data.get('pivot_row_index'),
                 step_data.get('pivot_col_index')
             )
-            self.left_label.setText(f"Step {self.current_step_index + 1}")
+            self.left_label.setText(f"Шаг {self.current_step_index + 1}")
         else:
             self.left_table.clear()
             self.left_label.setText("")

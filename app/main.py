@@ -107,8 +107,20 @@ class SimplexCalculator(QWidget):
 
         self.goal_type = QComboBox()
         self.goal_type.addItems(["min", "max"])
-        self.goal_type.setStyleSheet("font-size: 12pt;")
-        self.goal_type.setFixedWidth(70)
+        self.goal_type.setStyleSheet("""
+                QComboBox {
+                    font-size: 12pt;
+                }
+                QComboBox::drop-down {
+                    width: 0px; 
+                    border: none; 
+                }
+                
+                QComboBox::down-arrow {
+                    image: none;
+                }
+            """)
+        self.goal_type.setFixedWidth(55)
         self.goal_type.setCurrentText("min")  # Set 'min' as the default selection
         goal_layout.addWidget(self.goal_type)
 
@@ -206,7 +218,19 @@ class SimplexCalculator(QWidget):
             # Add dropdown for relation
             relation = QComboBox()
             relation.addItems(["≤", "≥", "="])
-            relation.setStyleSheet("font-size: 13pt;")
+            relation.setStyleSheet("""
+                QComboBox {
+                    font-size: 13pt;
+                }
+                QComboBox::drop-down {
+                    width: 0px; 
+                    border: none; 
+                }
+                
+                QComboBox::down-arrow {
+                    image: none;
+                }
+            """)
             relation.setFixedWidth(40)
             constraint_centered_layout.addWidget(relation)
 
@@ -438,6 +462,9 @@ class SimplexCalculator(QWidget):
             )
             return
 
+import qdarktheme
+import qdarkstyle
+from qt_material import apply_stylesheet
 
 if __name__ == "__main__":
     APP_PATH = ""
@@ -448,7 +475,12 @@ if __name__ == "__main__":
     else:
         pass
     app = QApplication(sys.argv)
-    app.setStyle("Fusion")
+    #qdarktheme.setup_theme()
+    #qdarktheme.load_stylesheet()
+    #qdarktheme.setup_theme("auto")
+    app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt6'))
+    #apply_stylesheet(app, theme='dark_cyan.xml')
+    #app.setStyle("Fusion")
     app.setWindowIcon(QIcon(path.join(APP_PATH, "icons/solution.ico")))
     window = SimplexCalculator()
     window.resize(800, 600)  # Adjusted initial window size

@@ -1,6 +1,7 @@
 # main.py
 import os.path as path
 import sys
+import qdarkstyle
 from pandas import DataFrame
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
@@ -18,9 +19,11 @@ class SimplexCalculator(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Симплекс Метод Калькулятор v1.2.1")
+        self.is_dark_theme = False
         self.initUI()
 
     def initUI(self):
+        self.apply_theme()
         # Main Layout
         self.layout = QVBoxLayout()
         self.layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -140,8 +143,39 @@ class SimplexCalculator(QWidget):
         self.solve_button.clicked.connect(self.solve)
         self.layout.addWidget(self.solve_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(1)
+        bottom_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.toggle_theme_button = QPushButton("Изменить тему")
+        self.toggle_theme_button.setFixedWidth(100)
+        self.toggle_theme_button.clicked.connect(self.toggle_theme)
+        bottom_layout.addWidget(self.toggle_theme_button, alignment=Qt.AlignmentFlag.AlignBottom)
+
+        self.layout.addLayout(bottom_layout)
         self.setLayout(self.layout)
         self.update_fields()
+
+    def apply_theme(self):
+        if self.is_dark_theme:
+            app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt6', palette=qdarkstyle.DarkPalette))
+            app.setStyleSheet(app.styleSheet() + """
+                QTableView::item {
+                    color: #ffffff;
+                }
+                QTableView::item:selected {
+                    background-color: #3c3d40;
+                    color: #ffffff;
+                }
+                """)
+        else:
+            app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt6', palette=qdarkstyle.LightPalette))
+
+    def toggle_theme(self):
+        self.is_dark_theme = not self.is_dark_theme
+        self.apply_theme()
+
+        if hasattr(self, 'solution_window'):
+            self.solution_window.is_dark_theme = self.is_dark_theme
 
     def change_spin_value(self, spin_box, delta):
         current_value = spin_box.value()
@@ -449,7 +483,7 @@ class SimplexCalculator(QWidget):
             maximization_flag = True if goal_type_selected == "max" else False
 
             # Display the initial tableau in the solution window
-            self.solution_window = SimplexSolutionWindow()
+            self.solution_window = SimplexSolutionWindow(dark_theme=self.is_dark_theme)
             self.solution_window.add_step(df, copy_basic_vars, copy_non_basic_vars, is_maximization=maximization_flag)
             self.solution_window.show()
 
@@ -462,9 +496,6 @@ class SimplexCalculator(QWidget):
             )
             return
 
-import qdarktheme
-import qdarkstyle
-from qt_material import apply_stylesheet
 
 if __name__ == "__main__":
     APP_PATH = ""
@@ -475,12 +506,6 @@ if __name__ == "__main__":
     else:
         pass
     app = QApplication(sys.argv)
-    #qdarktheme.setup_theme()
-    #qdarktheme.load_stylesheet()
-    #qdarktheme.setup_theme("auto")
-    app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt6'))
-    #apply_stylesheet(app, theme='dark_cyan.xml')
-    #app.setStyle("Fusion")
     app.setWindowIcon(QIcon(path.join(APP_PATH, "icons/solution.ico")))
     window = SimplexCalculator()
     window.resize(800, 600)  # Adjusted initial window size

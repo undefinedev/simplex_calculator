@@ -7,12 +7,17 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from fractions import Fraction
+import time
 
 
 class SimplexSolutionWindow(QWidget):
-    def __init__(self):
+    def __init__(self, dark_theme):
         super().__init__()
         self.setWindowTitle("Simplex Method Solution Steps")
+        self.is_dark_theme = dark_theme
+        self.calculation_start_time = None
+        self.calculation_end_time = None
+        self.elapsed_time = None
         self.resize(1000, 600)
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
@@ -75,7 +80,7 @@ class SimplexSolutionWindow(QWidget):
         self.watermark_label.setText(
             ' <span style="color: rgba(128, 128, 128, 50%); font-size: 7pt;">'
             ' <a href="https://github.com/undefinedev/simplex_calculator" style="color: rgba(128, 128, 128, 50%);'
-            ' text-decoration: none;">undefinedev</a> © 2024'
+            ' text-decoration: none;">undefinedev © 2024</a>'
             '</span>'
         )
         self.layout.addWidget(self.watermark_label)
@@ -158,7 +163,7 @@ class SimplexSolutionWindow(QWidget):
                 step_data['basic_vars'],
                 step_data['non_basic_vars']
             )
-            self.right_label.setText(f"Step {next_index + 1}")
+            self.right_label.setText(f"Шаг {next_index + 1}")
         else:
             self.right_table.clear()
             self.right_label.setText("")
@@ -200,7 +205,10 @@ class SimplexSolutionWindow(QWidget):
         if pivot_row_index is not None and pivot_col_index is not None:
             pivot_item = table_widget.item(pivot_row_index, pivot_col_index)
             if pivot_item:
-                pivot_item.setBackground(QColor(255, 255, 0))  # Yellow color
+                if self.is_dark_theme:
+                    pivot_item.setBackground(QColor("blue"))
+                else:
+                    pivot_item.setBackground(QColor("#37AEFE"))
 
     def clear_highlights(self, table_widget):
         """
@@ -210,7 +218,10 @@ class SimplexSolutionWindow(QWidget):
             for j in range(table_widget.columnCount()):
                 item = table_widget.item(i, j)
                 if item:
-                    item.setBackground(QColor(255, 255, 255))  # White color
+                    if self.is_dark_theme:
+                        item.setBackground(QColor("#19232D"))
+                    else:
+                        item.setBackground(QColor("#FAFAFA"))
 
     def prev_steps(self):
         if self.current_step_index > 0:
@@ -243,6 +254,7 @@ class SimplexSolutionWindow(QWidget):
             )
             return
 
+        self.calculation_start_time = time.perf_counter()
         while iteration < max_iterations:
             iteration += 1
 
@@ -286,6 +298,8 @@ class SimplexSolutionWindow(QWidget):
                     positive_F_entries = [j+1 for j, val in enumerate(F_row) if val > 0]
                     if not positive_F_entries:
                         # Optimal solution found
+                        self.calculation_end_time = time.perf_counter()
+                        self.elapsed_time = self.calculation_end_time - self.calculation_start_time
                         self.display_optimal_solution(df)
                         return
                     else:
@@ -321,6 +335,8 @@ class SimplexSolutionWindow(QWidget):
                                     break
                         else:
                             # Optimal solution found (no positive elements in F row under non-basic variables)
+                            self.calculation_end_time = time.perf_counter()
+                            self.elapsed_time = self.calculation_end_time - self.calculation_start_time
                             self.display_optimal_solution(df)
                             return
             except Exception as e:
@@ -431,6 +447,9 @@ class SimplexSolutionWindow(QWidget):
             solution_str += "Оптимальное решение:\n"
             for var in sorted(variable_values.keys()):
                 solution_str += f"{var} = {variable_values[var]}\n"
+
+            if hasattr(self, 'elapsed_time'):
+                solution_str += f"\nВремя вычисления: {self.elapsed_time:.10f} секунд"
 
             # Display the solution under the final matrix in solution window
             self.solution_label.setText(solution_str)

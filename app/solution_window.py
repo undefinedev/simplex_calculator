@@ -2,7 +2,7 @@
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QTableWidget, QTableWidgetItem, QLabel, QMessageBox, QFrame, QAbstractItemView
+    QTableWidget, QTableWidgetItem, QLabel, QMessageBox, QFrame, QAbstractItemView, QDialog, QRadioButton
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
@@ -11,10 +11,11 @@ import time
 
 
 class SimplexSolutionWindow(QWidget):
-    def __init__(self, dark_theme):
+    def __init__(self, dark_theme, task_info):
         super().__init__()
         self.setWindowTitle("Simplex Method Solution Steps")
         self.is_dark_theme = dark_theme
+        self.task_info = task_info
         self.calculation_start_time = None
         self.calculation_end_time = None
         self.elapsed_time = None
@@ -72,6 +73,10 @@ class SimplexSolutionWindow(QWidget):
         self.solution_label = QLabel()
         self.solution_label.setStyleSheet("font-size: 12pt;")
         self.layout.addWidget(self.solution_label)
+
+        self.save_button = QPushButton("Сохранить ответ")
+        self.save_button.clicked.connect(self.open_save_dialog)
+        self.layout.addWidget(self.save_button)
 
         self.watermark_label = QLabel()
         self.watermark_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -467,3 +472,149 @@ class SimplexSolutionWindow(QWidget):
                 f"An error occurred while displaying the optimal solution: {e}"
             )
             return
+
+    def format_matrix_text(self, df):
+        # Compute column widths with formatted values
+        values_str = [[format_number(df.iloc[i, j]) for j in range(df.shape[1])]
+                      for i in range(df.shape[0])]
+        col_widths = [max(len(row[j]) for row in values_str) for j in range(df.shape[1])]
+
+        header_line = "     " + " ".join(f"{col:>{w}}" for col, w in zip(df.columns, col_widths))
+        lines = [header_line]
+        for i, idx in enumerate(df.index):
+            line = " ".join(f"{values_str[i][j]:>{col_widths[j]}}" for j in range(df.shape[1]))
+            line = f"{idx:<3} {line}"
+            lines.append(line)
+        return "\n".join(lines)
+
+    def format_matrix_html(self, df):
+        html = "<table border='1' cellspacing='0' cellpadding='5' style='border-collapse: collapse; font-family: sans-serif;'>"
+        html += "<tr><th></th>" + "".join(f"<th>{col}</th>" for col in df.columns) + "</tr>"
+        for idx in df.index:
+            html += f"<tr><th>{idx}</th>" + "".join(
+                f"<td>{format_number(df.loc[idx, col])}</td>" for col in df.columns) + "</tr>"
+        html += "</table>"
+        return html
+
+    def open_save_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Сохранить ответ")
+
+        layout = QVBoxLayout(dialog)
+
+        info_label = QLabel("Выберите формат для сохранения ответа:")
+        layout.addWidget(info_label)
+
+        rb_txt = QRadioButton("Текстовый файл (.txt)")
+        rb_html = QRadioButton("HTML файл (.html)")
+        rb_txt.setChecked(True)  # default
+
+        layout.addWidget(rb_txt)
+        layout.addWidget(rb_html)
+
+        # Buttons to choose file and confirm
+        h_layout = QHBoxLayout()
+        choose_file_button = QPushButton("Выбрать файл...")
+        h_layout.addWidget(choose_file_button)
+        save_button = QPushButton("Сохранить")
+        h_layout.addWidget(save_button)
+        cancel_button = QPushButton("Отмена")
+        h_layout.addWidget(cancel_button)
+
+        layout.addLayout(h_layout)
+
+        # Connect buttons
+        def choose_file():
+            # Decide extension based on chosen radio
+            if rb_txt.isChecked():
+                ext = "txt"
+                filter_str = "Text Files (*.txt);;All Files (*)"
+            else:
+                ext = "html"
+                filter_str = "HTML Files (*.html);;All Files (*)"
+
+            # Default filename
+            rows = len(self.basic_vars)
+            cols = len(self.non_basic_vars) + 1  # +1 for Si
+            is_max = self.is_maximization
+            from save_answer import generate_default_filename
+            default_filename = generate_default_filename(rows, cols, is_max, ext)
+
+            from save_answer import save_file_dialog
+            chosen_file = save_file_dialog(default_filename, filter_str)
+            if chosen_file:
+                choose_file_button.setText(chosen_file)
+                choose_file_button.setToolTip(chosen_file)
+
+        choose_file_button.clicked.connect(choose_file)
+
+        def do_save():
+            chosen_path = choose_file_button.text()
+            if chosen_path.startswith("Выбрать файл"):
+                QMessageBox.warning(self, "Файл не выбран", "Пожалуйста, выберите файл для сохранения.")
+                return
+
+            # Extract data
+            rows = len(self.basic_vars)
+            cols = len(self.non_basic_vars) + 1
+            is_max = self.is_maximization
+            task_info = self.task_info
+            start_step = self.steps[0]
+            start_df = start_step['tableau_df']
+            start_basic = start_step['basic_vars']
+            start_non_basic = start_step['non_basic_vars']
+            start_df_renamed = rename_df_headers(start_df, start_basic, start_non_basic)
+
+            # For end matrix
+            end_step = self.steps[-1]
+            end_df = end_step['tableau_df']
+            end_basic = end_step['basic_vars']
+            end_non_basic = end_step['non_basic_vars']
+            end_df_renamed = rename_df_headers(end_df, end_basic, end_non_basic)
+
+            start_matrix_text = self.format_matrix_text(start_df_renamed)
+            end_matrix_text = self.format_matrix_text(end_df_renamed)
+            start_matrix_html = self.format_matrix_html(start_df_renamed)
+            end_matrix_html = self.format_matrix_html(end_df_renamed)
+            solution_str = self.solution_label.text()
+
+            from save_answer import save_as_text, save_as_html
+
+            if rb_txt.isChecked():
+                save_as_text(rows, cols, is_max, task_info, start_matrix_text, end_matrix_text, solution_str,
+                             chosen_path)
+            else:
+                save_as_html(rows, cols, is_max, task_info, start_matrix_html, end_matrix_html, solution_str,
+                             chosen_path)
+
+            dialog.accept()
+
+        save_button.clicked.connect(do_save)
+        cancel_button.clicked.connect(dialog.reject)
+
+        dialog.exec()
+
+
+def format_number(num):
+    # If it's a Fraction
+    if hasattr(num, 'denominator'):
+        if num.denominator == 1:
+            # Integral fraction
+            return str(num.numerator)
+        else:
+            # Fractional
+            return f"{num.numerator}/{num.denominator}"
+    else:
+        # It's a float or int
+        val = float(num)
+        if val.is_integer():
+            return str(int(val))
+        else:
+            return str(val)
+
+
+def rename_df_headers(df, basic_vars, non_basic_vars):
+    df_renamed = df.copy()
+    df_renamed.index = basic_vars + ['F']
+    df_renamed.columns = ['Si'] + non_basic_vars
+    return df_renamed

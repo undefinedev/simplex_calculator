@@ -7,8 +7,8 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QSpinBox, QMessageBox, QAbstractSpinBox
 )
-from PyQt6.QtGui import QDoubleValidator, QIcon
-from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon, QRegularExpressionValidator  # , QDoubleValidator
+from PyQt6.QtCore import Qt, QRegularExpression
 from fractions import Fraction
 
 # Import the SimplexSolutionWindow from solution_window.py
@@ -88,7 +88,7 @@ class SimplexCalculator(QWidget):
         goal_container_layout = QHBoxLayout()
         goal_container_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         goal_layout = QHBoxLayout()
-        goal_layout.setSpacing(10)
+        goal_layout.setSpacing(5)
         goal_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Align goal function section to the center
         goal_label = QLabel("Целевая функция:")
         goal_label.setStyleSheet("font-size: 11.5pt;")
@@ -192,6 +192,8 @@ class SimplexCalculator(QWidget):
         self.goal_inputs.clear()
 
         num_vars = self.num_vars_spin.value()
+        regex = QRegularExpression(r"^-?\d+(?:[.,]\d+)?(?:/\d+(?:[.,]\d+)?)?$")
+        validator = QRegularExpressionValidator(regex)
 
         for i in range(num_vars):
             if i > 0:  # Add `+` only after the first variable
@@ -201,7 +203,7 @@ class SimplexCalculator(QWidget):
                 self.goal_layout.addWidget(plus_label)
 
             input_field = QLineEdit()
-            input_field.setValidator(QDoubleValidator(-9999, 9999, 5))
+            input_field.setValidator(validator)
             input_field.setPlaceholderText("0")  # Default placeholder
             input_field.setStyleSheet("font-size: 12pt;")
             input_field.setFixedWidth(55)  # Smaller box size
@@ -238,7 +240,7 @@ class SimplexCalculator(QWidget):
                     constraint_centered_layout.addWidget(plus_label)
 
                 input_field = QLineEdit()
-                input_field.setValidator(QDoubleValidator(-9999, 9999, 5))
+                input_field.setValidator(validator)
                 input_field.setStyleSheet("font-size: 12pt;")
                 input_field.setPlaceholderText("0")  # Default placeholder
                 input_field.setFixedWidth(55)  # Smaller box size
@@ -270,7 +272,7 @@ class SimplexCalculator(QWidget):
 
             # Add RHS input
             rhs = QLineEdit()
-            rhs.setValidator(QDoubleValidator(-9999, 9999, 5))
+            rhs.setValidator(validator)
             rhs.setPlaceholderText("0")  # Default placeholder
             rhs.setStyleSheet("font-size: 12.5pt;")
             rhs.setFixedWidth(55)
@@ -482,8 +484,22 @@ class SimplexCalculator(QWidget):
             copy_non_basic_vars = columns[1:]
             maximization_flag = True if goal_type_selected == "max" else False
 
+            # Generate answer text for possible saving
+            task_info = "Целевая функция: "
+            task_info += " + ".join(
+                f"{coef if coef != 1 else ''}x{i + 1}" for i, coef in enumerate(goal_values) if coef != 0) or "0"
+            task_info += f" → {goal_type_selected}\n\nУсловия:\n"
+
+            for i, (coeffs, relation, rhs) in enumerate(constraints, start=1):
+                constraint_str = ""
+                for j, c in enumerate(coeffs):
+                    sign = "+" if j > 0 and c >= 0 else ""
+                    constraint_str += f"{sign}{c if c != 1 else ''}x{j + 1} "
+                constraint_str += f"{relation} {rhs}"
+                task_info += f"{constraint_str}\n"
+
             # Display the initial tableau in the solution window
-            self.solution_window = SimplexSolutionWindow(dark_theme=self.is_dark_theme)
+            self.solution_window = SimplexSolutionWindow(dark_theme=self.is_dark_theme, task_info=task_info)
             self.solution_window.add_step(df, copy_basic_vars, copy_non_basic_vars, is_maximization=maximization_flag)
             self.solution_window.show()
 

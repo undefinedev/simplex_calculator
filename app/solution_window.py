@@ -75,6 +75,7 @@ class SimplexSolutionWindow(QWidget):
         self.layout.addWidget(self.solution_label)
 
         self.save_button = QPushButton("Сохранить ответ")
+        self.save_button.setFixedWidth(110)
         self.save_button.clicked.connect(self.open_save_dialog)
         self.layout.addWidget(self.save_button)
 

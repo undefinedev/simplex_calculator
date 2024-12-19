@@ -1,6 +1,7 @@
 # main.py
 import os.path as path
 import sys
+import random
 import qdarkstyle
 from pandas import DataFrame
 from PyQt6.QtWidgets import (
@@ -151,6 +152,11 @@ class SimplexCalculator(QWidget):
         self.toggle_theme_button.clicked.connect(self.toggle_theme)
         bottom_layout.addWidget(self.toggle_theme_button, alignment=Qt.AlignmentFlag.AlignBottom)
 
+        self.random_button = QPushButton("Сгенерировать задачу")
+        self.random_button.setFixedWidth(150)
+        self.random_button.clicked.connect(self.generate_random_task)
+        bottom_layout.addWidget(self.random_button, alignment=Qt.AlignmentFlag.AlignBottom)
+
         self.layout.addLayout(bottom_layout)
         self.setLayout(self.layout)
         self.update_fields()
@@ -284,7 +290,7 @@ class SimplexCalculator(QWidget):
     def solve(self):
         try:
             # Retrieve goal function coefficients
-            goal_values = [float(field.text()) if field.text() else 0.0 for field in self.goal_inputs]
+            goal_values = [parse_input_number(field.text()) if field.text() else 0.0 for field in self.goal_inputs]
             goal_type_selected = self.goal_type.currentText().lower()
 
             # Handle goal function based on selection
@@ -340,14 +346,14 @@ class SimplexCalculator(QWidget):
                 coeffs = []
                 for j in range(num_vars):
                     text = qlineedits[j].text()
-                    coef = float(text) if text else 0.0
+                    coef = parse_input_number(text) if text else 0.0
                     coeffs.append(coef)
 
                 # Extract relation
                 relation = qcomboboxes[0].currentText()
 
                 # Extract RHS
-                rhs_value = float(qlineedits[-1].text()) if qlineedits[-1].text() else 0.0
+                rhs_value = parse_input_number(qlineedits[-1].text()) if qlineedits[-1].text() else 0.0
 
                 constraints.append((coeffs, relation, rhs_value))
 
@@ -457,20 +463,20 @@ class SimplexCalculator(QWidget):
                     adjusted_rhs = -rhs
 
                 # Prepare the row: [Si, X1, X2, ..., Xn] excluding basic variables
-                row = [str(Fraction(adjusted_rhs))]
+                row = [Fraction(adjusted_rhs)]
                 for var in final_decision_vars:
                     var_index = decision_vars.index(var)
                     coef = adjusted_coeffs[var_index] if var_index < len(adjusted_coeffs) else 0.0
-                    row.append(str(Fraction(coef)))
+                    row.append(Fraction(coef))
                 tableau_data.append(row)
 
             # Append the objective function row
-            objective_row = [str(Fraction(0))]  # 0 for Si
+            objective_row = [Fraction(0)]  # 0 for Si
             for var in final_decision_vars:
                 var_index = decision_vars.index(var)
                 # The goal function is already adjusted based on min or max
                 coef = adjusted_goal_values[var_index]
-                objective_row.append(str(Fraction(coef)))
+                objective_row.append(Fraction(coef))
             row_names.append("F")
             tableau_data.append(objective_row)
 
@@ -485,17 +491,99 @@ class SimplexCalculator(QWidget):
             maximization_flag = True if goal_type_selected == "max" else False
 
             # Generate answer text for possible saving
-            task_info = "Целевая функция: "
-            task_info += " + ".join(
-                f"{coef if coef != 1 else ''}x{i + 1}" for i, coef in enumerate(goal_values) if coef != 0) or "0"
-            task_info += f" → {goal_type_selected}\n\nУсловия:\n"
+            terms = []
+            for i, coef in enumerate(goal_values):
+                if coef != 0:
+                    # Determine sign
+                    if i == 0:
+                        # first term
+                        if coef < 0:
+                            sign = "-"
+                        else:
+                            sign = ""
+                    else:
+                        # not first term
+                        if coef > 0:
+                            sign = "+"
+                        else:
+                            sign = "-"
+
+                    fcoef = format_task_number(Fraction(abs(coef)))  # use abs(coef) since sign is handled separately
+                    if abs(coef) == 1:
+                        # omit the '1'
+                        terms.append(f"{sign}x{i + 1}")
+                    else:
+                        terms.append(f"{sign}{fcoef}x{i + 1}")
+
+            if not terms:
+                terms = ["0"]
+
+            goal_type_selected = self.goal_type.currentText().lower()
+            task_info = "Целевая функция: " + " ".join(terms) + f" → {goal_type_selected}\n\nУсловия:\n"
 
             for i, (coeffs, relation, rhs) in enumerate(constraints, start=1):
-                constraint_str = ""
+                constraint_terms = []
                 for j, c in enumerate(coeffs):
-                    sign = "+" if j > 0 and c >= 0 else ""
-                    constraint_str += f"{sign}{c if c != 1 else ''}x{j + 1} "
-                constraint_str += f"{relation} {rhs}"
+                    if c != 0:
+                        # Determine sign for constraints
+                        if j == 0:
+                            # first var in constraint
+                            if c < 0:
+                                sign = "-"
+                            else:
+                                sign = ""
+                        else:
+                            # subsequent var
+                            if c > 0:
+                                sign = "+"
+                            else:
+                                sign = "-"
+
+                        fc = format_task_number(Fraction(abs(c)))
+                        if abs(c) == 1:
+                            constraint_terms.append(f"{sign}x{j + 1}")
+                        else:
+                            constraint_terms.append(f"{sign}{fc}x{j + 1}")
+
+                if not constraint_terms:
+                    constraint_terms = ["0"]
+
+                frhs = format_task_number(Fraction(rhs))
+                # Join constraint terms with no extra space before sign because we included sign in terms
+                # But we may need a space
+                # constraint_terms now like ["+x2","-2x3"] so they start with sign
+                # For cleaner look: just join them: "x1 +x2 -x3"
+                # We can add space after sign if desired. For now let's keep as is and rely on sign inside terms.
+                # Actually, let's ensure a space after sign by modifying the appending logic:
+
+                # If we want "x1 + x2 - x3" with spaces around signs:
+                # Instead of adding sign directly adjacent to var, we can handle sign and spacing:
+                # Let's do this: first element no space before if positive.
+                # If first char is '+' or '-', add a space before if not first element.
+
+                # Actually easier: build a string from scratch:
+                constraint_str = constraint_terms[0]
+                for t in constraint_terms[1:]:
+                    if t.startswith('+'):
+                        constraint_str += " " + t.replace('+', '+ ')
+                    elif t.startswith('-'):
+                        constraint_str += " " + t.replace('-', '- ')
+                    else:
+                        constraint_str += " " + t
+
+                # If the first term may start with '-', it's okay " - x2"
+                # If starts with '+', we omit plus for first?
+                # Already handled. It's complicated but let's keep consistent approach:
+                # Actually, we decided no plus for first var if positive. So no leading '+'
+
+                # For simplicity, let's not complicate spacing further now.
+                # Just trust we handled sign properly. If you want perfect formatting:
+                # If first char of constraint_str is '+', remove it.
+                if constraint_str.startswith('+'):
+                    constraint_str = constraint_str[1:].strip()
+
+                # Add relation and RHS
+                constraint_str += f" {relation} {frhs}"
                 task_info += f"{constraint_str}\n"
 
             # Display the initial tableau in the solution window
@@ -511,6 +599,131 @@ class SimplexCalculator(QWidget):
                 f"Пожалуйста, убедитесь, что все поля заполнены корректно и содержат числовые значения.\n\nОшибка: {e}"
             )
             return
+
+    def generate_random_task(self):
+        # Generate random coefficients for goal function and constraints
+        num_vars = self.num_vars_spin.value()
+        num_constraints = self.num_constraints_spin.value()
+
+        # For goal function inputs
+        for field in self.goal_inputs:
+            field.setText(self.random_coef())
+
+        # For constraints:
+        # self.constraints_layout contains QHBoxLayouts for each constraint
+        # Each constraint line has num_vars * (QLineEdit, QLabel) pairs + one QComboBox + one QLineEdit (RHS)
+        # Extract them similarly as in solve() method
+        for i in range(num_constraints):
+            layout = self.constraints_layout.itemAt(i).layout()
+            if layout is None:
+                continue
+
+            widgets = [layout.itemAt(j).widget() for j in range(layout.count()) if layout.itemAt(j).widget()]
+            qlineedits = [w for w in widgets if isinstance(w, QLineEdit)]
+            qcomboboxes = [w for w in widgets if isinstance(w, QComboBox)]
+
+            # Set coefficients
+            for j in range(num_vars):
+                qlineedits[j].setText(self.random_coef())
+
+            # Set relation randomly?
+            # qcomboboxes[0].setCurrentText(random.choice(["≤", "≥", "="]))
+            # Or keep it fixed to ≤ just for fun:
+            qcomboboxes[0].setCurrentText(random.choice(["≤", "≥", "="]))
+
+            # Set RHS
+            qlineedits[-1].setText(self.random_coef())
+
+    def random_coef(self):
+        # Decide on integer or decimal:
+        # 80% int, 20% decimal
+        if random.random() < 0.8:
+            val = random.randint(-100, 100)
+            return str(val)
+        else:
+            # Decimal: val.x where x can be 0.5 or 0.25
+            val = random.randint(-100, 100)
+            decimal_part = random.choice([".5", ".25"])
+            # If val == 0, ensure not to return just '.5', so keep val anyway
+            return f"{val}{decimal_part}"
+
+
+def parse_input_number(text):
+    text = text.strip()
+    if not text:
+        return Fraction(0)  # default if empty
+
+    # Replace comma with dot for decimals
+    text = text.replace(',', '.')
+
+    if '/' in text:
+        # Fraction form
+        parts = text.split('/')
+        if len(parts) != 2:
+            raise ValueError(f"Invalid fraction format: {text}")
+
+        num_str, den_str = parts
+
+        # Disallow decimals in fraction parts
+        if '.' in num_str or '.' in den_str:
+            # Fractions must be integers only
+            raise ValueError("Fractions must be integers only (e.g. '3/2', not '3.5/2').")
+
+        try:
+            numerator = int(num_str)
+            denominator = int(den_str)
+        except ValueError:
+            raise ValueError(f"Invalid integer in fraction: {text}")
+
+        if denominator == 0:
+            raise ValueError("Division by zero in fraction")
+
+        return Fraction(numerator, denominator)
+    else:
+        # No fraction slash, could be integer or decimal
+        if '.' in text:
+            # Decimal number, convert to fraction by counting decimals
+            # e.g. 2.1 => integral:2, decimal:1 digit -> 2.1 = 21/10
+            # e.g. -3.25 => -3 and 25 -> numerator = (-3)*100 + 25 = -300+25 = -275/100
+            sign = 1
+            if text.startswith('-'):
+                sign = -1
+                text = text[1:]
+
+            integral_str, decimal_str = text.split('.')
+            if not integral_str:
+                integral_str = '0'
+            try:
+                integral_part = int(integral_str)
+            except ValueError:
+                raise ValueError(f"Invalid integral part: {integral_str}")
+
+            if not decimal_str.isdigit():
+                raise ValueError(f"Invalid decimal part: {decimal_str}")
+
+            decimal_length = len(decimal_str)
+            denominator = 10**decimal_length
+            numerator = integral_part * denominator + int(decimal_str)
+            numerator *= sign
+
+            return Fraction(numerator, denominator)
+        else:
+            # Pure integer
+            try:
+                val = int(text)  # If user typed something like '2' or '-3'
+                return Fraction(val)
+            except ValueError:
+                # If it's not integer, maybe empty or invalid?
+                # If empty handled above. If invalid, raise error.
+                raise ValueError(f"Invalid integer: {text}")
+
+
+def format_task_number(num):
+    # num is Fraction
+    if num.denominator == 1:
+        return str(num.numerator)  # no decimal .0
+    else:
+        return f"{num.numerator}/{num.denominator}"
 
 
 if __name__ == "__main__":

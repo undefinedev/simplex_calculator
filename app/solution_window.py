@@ -92,12 +92,12 @@ class SimplexSolutionWindow(QWidget):
         self.layout.addWidget(self.watermark_label)
 
         self.steps = []
-        self.current_step_index = 0  # Start at 0 to display steps 0 and 1
+        self.current_step_index = 0
 
         # Initialize variable lists
-        self.basic_vars = []      # List of basic variable names (rows)
-        self.non_basic_vars = []  # List of non-basic variable names (columns)
-        self.is_maximization = False  # Flag to indicate if the original problem was maximization
+        self.basic_vars = []
+        self.non_basic_vars = []
+        self.is_maximization = False
 
     def add_step(self, tableau_df, basic_vars, non_basic_vars, pivot_row_index=None, pivot_col_index=None,
                  is_maximization=False):
@@ -105,9 +105,8 @@ class SimplexSolutionWindow(QWidget):
         Add a new step to the steps list.
         """
         if tableau_df is None:
-            return  # Error already displayed
+            return
 
-        # Save the tableau, variable names, and pivot indices for this step
         self.steps.append({
             'tableau_df': tableau_df.copy(),
             'basic_vars': basic_vars.copy(),
@@ -116,23 +115,17 @@ class SimplexSolutionWindow(QWidget):
             'pivot_col_index': pivot_col_index
         })
 
-        # Assign basic_vars and non_basic_vars to instance variables
         self.basic_vars = basic_vars.copy()
         self.non_basic_vars = non_basic_vars.copy()
 
-        # Store the is_maximization flag
         if len(self.steps) == 1:
             self.is_maximization = is_maximization
 
-        # Enable or disable navigation buttons
         self.update_navigation_buttons()
 
-        # If this is the first step, start the simplex method
         if len(self.steps) == 1:
-            # Start the simplex method
             self.perform_simplex_method(tableau_df)
 
-        # Display the current steps
         self.display_current_steps()
 
     def update_navigation_buttons(self):
@@ -143,7 +136,6 @@ class SimplexSolutionWindow(QWidget):
         """
         Display the current pair of steps in the QTableWidgets.
         """
-        # Display left tableau (current step)
         if 0 <= self.current_step_index < len(self.steps):
             step_data = self.steps[self.current_step_index]
             self.display_tableau(
@@ -159,7 +151,6 @@ class SimplexSolutionWindow(QWidget):
             self.left_table.clear()
             self.left_label.setText("")
 
-        # Display right tableau (next step)
         next_index = self.current_step_index + 1
         if 0 <= next_index < len(self.steps):
             step_data = self.steps[next_index]
@@ -174,7 +165,6 @@ class SimplexSolutionWindow(QWidget):
             self.right_table.clear()
             self.right_label.setText("")
 
-        # Update navigation buttons
         self.update_navigation_buttons()
 
     def display_tableau(self, table_widget, tableau_df, basic_vars, non_basic_vars, pivot_row_index=None,
@@ -186,14 +176,12 @@ class SimplexSolutionWindow(QWidget):
         table_widget.setRowCount(rows)
         table_widget.setColumnCount(cols)
 
-        # Set headers
         col_labels = ['Si'] + non_basic_vars
         row_labels = basic_vars + ['F']
 
         table_widget.setHorizontalHeaderLabels(col_labels)
         table_widget.setVerticalHeaderLabels(row_labels)
 
-        # Populate the table
         for i in range(rows):
             for j in range(cols):
                 value = tableau_df.iloc[i, j]
@@ -201,13 +189,10 @@ class SimplexSolutionWindow(QWidget):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 table_widget.setItem(i, j, item)
 
-        # Adjust column widths
         table_widget.resizeColumnsToContents()
 
-        # Clear previous highlights
         self.clear_highlights(table_widget)
 
-        # Highlight pivot element if provided
         if pivot_row_index is not None and pivot_col_index is not None:
             pivot_item = table_widget.item(pivot_row_index, pivot_col_index)
             if pivot_item:
@@ -246,12 +231,11 @@ class SimplexSolutionWindow(QWidget):
         Perform the simplex method iterations according to the corrected algorithm.
         """
         iteration = 0
-        max_iterations = 100  # Prevent infinite loops
+        max_iterations = 300  # Prevent infinite loops
 
-        # Convert all data in df to Fraction
         try:
             for col in df.columns:
-                df[col] = df[col].apply(lambda x: Fraction(str(x)))
+                df[col] = df[col].apply(lambda x: Fraction(x) if not isinstance(x, Fraction) else x)
         except ValueError as e:
             QMessageBox.warning(
                 self,
@@ -375,7 +359,6 @@ class SimplexSolutionWindow(QWidget):
             )
             raise Exception("Pivot element is zero. Cannot perform pivot operation.")
 
-        # Store original values before updates
         original_df = df.copy()
 
         try:
@@ -428,27 +411,21 @@ class SimplexSolutionWindow(QWidget):
         Display the optimal solution under the final tableau.
         """
         try:
-            # Extract the optimal value
             F_row_index = len(df.index) - 1
-            optimal_value = df.iloc[F_row_index, 0]  # Si column at index 0
+            optimal_value = df.iloc[F_row_index, 0]
 
-            # Adjust optimal value if the original problem was maximization
             if self.is_maximization:
                 optimal_value *= -1
 
-            # Extract variable values
             variable_values = {}
 
-            # Non-basic variables (values are zero)
             for var in self.non_basic_vars:
                 variable_values[var] = Fraction(0)
 
-            # Basic variables (values from Si column)
             for i, var in enumerate(self.basic_vars):
-                value = df.iloc[i, 0]  # Si column at index 0
+                value = df.iloc[i, 0]
                 variable_values[var] = value
 
-            # Build the solution string
             solution_str = f"Оптимальное значение (F): {optimal_value}\n\n"
             solution_str += "Оптимальное решение:\n"
             for var in sorted(variable_values.keys()):
@@ -457,10 +434,8 @@ class SimplexSolutionWindow(QWidget):
             if hasattr(self, 'elapsed_time'):
                 solution_str += f"\nВремя вычисления: {self.elapsed_time:.10f} секунд"
 
-            # Display the solution under the final matrix in solution window
             self.solution_label.setText(solution_str)
 
-            # Update navigation buttons
             self.update_navigation_buttons()
 
             # Display the final steps
@@ -474,8 +449,165 @@ class SimplexSolutionWindow(QWidget):
             )
             return
 
+    def run_simplex_silently(self, df, basic_vars, non_basic_vars, is_maximization):
+        """
+    Run the simplex method without GUI updates.
+    Returns: (final_df, final_basic_vars, final_non_basic_vars, elapsed_time, status)
+    status can be:
+       "optimal"        if an optimal solution is found,
+       "no_solution"     if no feasible solution exists,
+       "iteration_limit" if the maximum number of iterations was reached.
+    """
+        start_time = time.perf_counter()
+
+        try:
+            for col in df.columns:
+                df[col] = df[col].apply(lambda x: Fraction(x) if not isinstance(x, Fraction) else x)
+        except ValueError as e:
+            QMessageBox.warning(
+                self,
+                "Value Error",
+                f"Invalid value in the initial tableau: {e}"
+            )
+            return df, basic_vars, non_basic_vars, 0, "no_solution"
+
+        iteration = 0
+        max_iterations = 1000
+
+        try:
+            while iteration < max_iterations:
+                iteration += 1
+                basic_rows = list(range(len(basic_vars)))
+                negative_Si_rows = [i for i in basic_rows if df.iloc[i, 0] < 0]
+
+                if negative_Si_rows:
+                    pivot_row_index = negative_Si_rows[0]
+                    row_series = df.iloc[pivot_row_index, 1:]
+                    negative_cols = [j + 1 for j, val in enumerate(row_series) if val < 0]
+                    if negative_cols:
+                        pivot_col_index = negative_cols[0]
+                        df, basic_vars, non_basic_vars = self.pivot_operation_silent(df, pivot_row_index,
+                                                                                     pivot_col_index, basic_vars,
+                                                                                     non_basic_vars)
+                        continue
+                    else:
+                        QMessageBox.warning(
+                            self,
+                            "No Solution",
+                            "No solution exists for this problem."
+                        )
+                        end_time = time.perf_counter()
+                        return df, basic_vars, non_basic_vars, (end_time - start_time), "no_solution"
+                else:
+                    F_row_index = len(df.index) - 1
+                    F_row = df.iloc[F_row_index, 1:]
+                    positive_F_entries = [j + 1 for j, val in enumerate(F_row) if val > 0]
+                    if not positive_F_entries:
+                        end_time = time.perf_counter()
+                        elapsed_time = end_time - start_time
+                        return df, basic_vars, non_basic_vars, elapsed_time, "optimal"
+                    else:
+                        done_pivot = False
+                        for pivot_col_index in positive_F_entries:
+                            positive_rows = [i for i in basic_rows if df.iloc[i, pivot_col_index] > 0]
+                            if not positive_rows:
+                                continue
+                            ratios = []
+                            for i in positive_rows:
+                                value = df.iloc[i, pivot_col_index]
+                                if value != 0:
+                                    ratio = df.iloc[i, 0] / value
+                                    if ratio >= 0:
+                                        ratios.append((ratio, i))
+                            if ratios:
+                                pivot_row_index = min(ratios, key=lambda x: x[0])[1]
+                                df, basic_vars, non_basic_vars = self.pivot_operation_silent(df, pivot_row_index,
+                                                                                             pivot_col_index,
+                                                                                             basic_vars, non_basic_vars)
+                                done_pivot = True
+                                break
+                        if not done_pivot:
+                            end_time = time.perf_counter()
+                            elapsed_time = end_time - start_time
+                            return df, basic_vars, non_basic_vars, elapsed_time, "optimal"
+            QMessageBox.warning(
+                self,
+                "Iteration Limit Reached",
+                "The maximum number of iterations was reached without finding an optimal solution."
+            )
+            end_time = time.perf_counter()
+            return df, basic_vars, non_basic_vars, (end_time - start_time), "iteration_limit"
+
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Error",
+                f"An error occurred during the silent simplex method: {e}"
+            )
+            end_time = time.perf_counter()
+            return df, basic_vars, non_basic_vars, (end_time - start_time), "no_solution"
+
+    def pivot_operation_silent(self, df, pivot_row_index, pivot_col_index, basic_vars, non_basic_vars):
+        """
+        Perform the pivot operation in silent mode (no GUI updates), with error handling.
+        """
+        df = df.copy()
+        y = df.iloc[pivot_row_index, pivot_col_index]
+
+        if y == 0:
+            QMessageBox.warning(
+                self,
+                "Pivot Error",
+                "Pivot element is zero. Cannot perform silent pivot operation."
+            )
+            raise Exception("Pivot element is zero in silent mode.")
+
+        original_df = df.copy()
+
+        try:
+            # Step 1: Compute new values for all elements not in pivot row or column
+            for i in range(len(df)):
+                if i != pivot_row_index:
+                    for j in range(len(df.columns)):
+                        if j != pivot_col_index:
+                            t1 = original_df.iloc[i, j]
+                            y1 = original_df.iloc[i, pivot_col_index]
+                            y2 = original_df.iloc[pivot_row_index, j]
+                            t2 = t1 - (y1 * y2) / y
+                            df.iloc[i, j] = t2
+
+            # Step 2: Update pivot row (excluding pivot element)
+            for j in range(len(df.columns)):
+                if j != pivot_col_index:
+                    t1 = original_df.iloc[pivot_row_index, j]
+                    df.iloc[pivot_row_index, j] = t1 / y
+
+            # Step 3: Update pivot column (excluding pivot element)
+            for i in range(len(df)):
+                if i != pivot_row_index:
+                    t1 = original_df.iloc[i, pivot_col_index]
+                    df.iloc[i, pivot_col_index] = t1 / -y
+
+            # Step 4: Update pivot element
+            df.iloc[pivot_row_index, pivot_col_index] = Fraction(1, y)
+
+            # Swap basic and non-basic variable names
+            leaving_var = basic_vars[pivot_row_index]
+            entering_var = non_basic_vars[pivot_col_index - 1]
+            basic_vars[pivot_row_index] = entering_var
+            non_basic_vars[pivot_col_index - 1] = leaving_var
+
+            return df, basic_vars, non_basic_vars
+
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Pivot Operation Error",
+                f"An error occurred during the silent pivot operation: {e}"
+            )
+            raise
+
     def format_matrix_text(self, df):
-        # Compute column widths with formatted values
         values_str = [[format_number(df.iloc[i, j]) for j in range(df.shape[1])]
                       for i in range(df.shape[0])]
         col_widths = [max(len(row[j]) for row in values_str) for j in range(df.shape[1])]
@@ -513,7 +645,6 @@ class SimplexSolutionWindow(QWidget):
         layout.addWidget(rb_txt)
         layout.addWidget(rb_html)
 
-        # Buttons to choose file and confirm
         h_layout = QHBoxLayout()
         choose_file_button = QPushButton("Выбрать файл...")
         h_layout.addWidget(choose_file_button)
@@ -524,9 +655,7 @@ class SimplexSolutionWindow(QWidget):
 
         layout.addLayout(h_layout)
 
-        # Connect buttons
         def choose_file():
-            # Decide extension based on chosen radio
             if rb_txt.isChecked():
                 ext = "txt"
                 filter_str = "Text Files (*.txt);;All Files (*)"
@@ -534,9 +663,8 @@ class SimplexSolutionWindow(QWidget):
                 ext = "html"
                 filter_str = "HTML Files (*.html);;All Files (*)"
 
-            # Default filename
             rows = len(self.basic_vars)
-            cols = len(self.non_basic_vars) + 1  # +1 for Si
+            cols = len(self.non_basic_vars) + 1
             is_max = self.is_maximization
             from save_answer import generate_default_filename
             default_filename = generate_default_filename(rows, cols, is_max, ext)
@@ -555,7 +683,6 @@ class SimplexSolutionWindow(QWidget):
                 QMessageBox.warning(self, "Файл не выбран", "Пожалуйста, выберите файл для сохранения.")
                 return
 
-            # Extract data
             rows = len(self.basic_vars)
             cols = len(self.non_basic_vars) + 1
             is_max = self.is_maximization
@@ -566,7 +693,6 @@ class SimplexSolutionWindow(QWidget):
             start_non_basic = start_step['non_basic_vars']
             start_df_renamed = rename_df_headers(start_df, start_basic, start_non_basic)
 
-            # For end matrix
             end_step = self.steps[-1]
             end_df = end_step['tableau_df']
             end_basic = end_step['basic_vars']
@@ -597,16 +723,12 @@ class SimplexSolutionWindow(QWidget):
 
 
 def format_number(num):
-    # If it's a Fraction
     if hasattr(num, 'denominator'):
         if num.denominator == 1:
-            # Integral fraction
             return str(num.numerator)
         else:
-            # Fractional
             return f"{num.numerator}/{num.denominator}"
     else:
-        # It's a float or int
         val = float(num)
         if val.is_integer():
             return str(int(val))

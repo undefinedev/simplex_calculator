@@ -14,7 +14,7 @@ def generate_default_filename(rows, cols, is_max, ext):
 
 
 def save_file_dialog(default_filename, filter_str):
-    downloads_path = QDir.homePath()  # default to home
+    downloads_path = QDir.homePath()
     potential_downloads = os.path.join(QDir.homePath(), "Downloads")
     if os.path.exists(potential_downloads):
         downloads_path = potential_downloads
@@ -121,4 +121,3 @@ def save_as_html(rows, cols, is_max, task_info, start_matrix_html, end_matrix_ht
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html_content)
-

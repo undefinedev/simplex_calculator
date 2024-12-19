@@ -1,4 +1,5 @@
 # main.py
+import datetime
 import os.path as path
 import sys
 import random
@@ -6,14 +7,15 @@ import qdarkstyle
 from pandas import DataFrame
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QComboBox, QSpinBox, QMessageBox, QAbstractSpinBox
+    QPushButton, QComboBox, QSpinBox, QMessageBox, QAbstractSpinBox, QPlainTextEdit, QTabWidget, QFileDialog,
+    QRadioButton, QDialog
 )
-from PyQt6.QtGui import QIcon, QRegularExpressionValidator  # , QDoubleValidator
-from PyQt6.QtCore import Qt, QRegularExpression
+from PyQt6.QtGui import QIcon, QRegularExpressionValidator
+from PyQt6.QtCore import Qt, QRegularExpression, QDir
 from fractions import Fraction
 
-# Import the SimplexSolutionWindow from solution_window.py
-from solution_window import SimplexSolutionWindow
+from solution_window import SimplexSolutionWindow, rename_df_headers, format_number
+from save_answer import generate_default_filename, save_as_text, save_as_html
 
 
 class SimplexCalculator(QWidget):
@@ -25,19 +27,60 @@ class SimplexCalculator(QWidget):
 
     def initUI(self):
         self.apply_theme()
-        # Main Layout
-        self.layout = QVBoxLayout()
-        self.layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # Top Section: Number of Variables and Constraints
+        self.tab_widget = QTabWidget(self)
+
+        # GUI mode tab
+        gui_mode_widget = QWidget()
+        gui_layout = QVBoxLayout(gui_mode_widget)
+        self.create_gui_tab(gui_layout)
+        self.tab_widget.addTab(gui_mode_widget, "GUI Mode")
+
+        # Text mode tab
+        text_mode_widget = QWidget()
+        text_layout = QVBoxLayout(text_mode_widget)
+
+        info_label = QLabel("Введите задачу в текстовом формате или загрузите из файла.\n"
+                            "Формат:\n"
+                            "Первая строка: кол-во_переменных кол-во_ограничений\n"
+                            "Вторая строка: коэфф. цел. функции и min/max\n"
+                            "Далее ограничения: коэффы, знак, правая часть.\n"
+                            "Поддержка чисел: целые, десятичные (2.5), дроби (3/2).")
+        text_layout.addWidget(info_label)
+
+        self.text_edit = QPlainTextEdit()
+        text_layout.addWidget(self.text_edit)
+
+        h_layout = QHBoxLayout()
+        self.load_file_button = QPushButton("Загрузить из файла")
+        self.load_file_button.clicked.connect(self.load_task_from_file)
+        h_layout.addWidget(self.load_file_button)
+
+        self.solve_text_button = QPushButton("Решить")
+        self.solve_text_button.clicked.connect(self.solve_text_mode)
+        h_layout.addWidget(self.solve_text_button)
+
+        self.back_to_gui_button = QPushButton("Вернуться в GUI режим")
+        self.back_to_gui_button.clicked.connect(lambda: self.tab_widget.setCurrentIndex(0))
+        h_layout.addWidget(self.back_to_gui_button)
+
+        text_layout.addLayout(h_layout)
+        self.tab_widget.addTab(text_mode_widget, "Text Mode")
+
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(self.tab_widget)
+        self.setLayout(main_layout)
+
+        self.update_fields()
+
+    def create_gui_tab(self, layout):
         top_layout = QHBoxLayout()
-        top_layout.setSpacing(1)  # Reduce spacing between elements
-        top_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)  # Align the top section to the left
+        top_layout.setSpacing(1)
+        top_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         label_vars = QLabel("Количество переменных:")
         label_vars.setStyleSheet("font-size: 11.5pt;")
         top_layout.addWidget(label_vars)
 
-        # Create buttons for increasing/decreasing number of variables
         self.num_vars_minus_button = QPushButton("-")
         self.num_vars_minus_button.setFixedSize(25, 25)
         self.num_vars_minus_button.clicked.connect(lambda: self.change_spin_value(self.num_vars_spin, -1))
@@ -45,11 +88,11 @@ class SimplexCalculator(QWidget):
 
         self.num_vars_spin = QSpinBox()
         self.num_vars_spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self.num_vars_spin.setMinimum(1)  # Minimum of 1 variable
+        self.num_vars_spin.setMinimum(1)
         self.num_vars_spin.setMaximum(12)
         self.num_vars_spin.setStyleSheet("font-size: 12.5pt;")
         self.num_vars_spin.setFixedWidth(60)
-        self.num_vars_spin.setValue(3)  # Default to 3 variables
+        self.num_vars_spin.setValue(3)
         self.num_vars_spin.valueChanged.connect(self.update_fields)
         top_layout.addWidget(self.num_vars_spin)
 
@@ -62,7 +105,6 @@ class SimplexCalculator(QWidget):
         label_constraints.setStyleSheet("font-size: 11.5pt;")
         top_layout.addWidget(label_constraints)
 
-        # Create buttons for increasing/decreasing number of constraints
         self.num_constraints_minus_button = QPushButton("-")
         self.num_constraints_minus_button.setFixedSize(25, 25)
         self.num_constraints_minus_button.clicked.connect(lambda: self.change_spin_value(self.num_constraints_spin, -1))
@@ -74,7 +116,7 @@ class SimplexCalculator(QWidget):
         self.num_constraints_spin.setMaximum(12)
         self.num_constraints_spin.setStyleSheet("font-size: 12.5pt;")
         self.num_constraints_spin.setFixedWidth(60)
-        self.num_constraints_spin.setValue(3)  # Default to 3 constraints
+        self.num_constraints_spin.setValue(3)
         self.num_constraints_spin.valueChanged.connect(self.update_fields)
         top_layout.addWidget(self.num_constraints_spin)
 
@@ -83,14 +125,13 @@ class SimplexCalculator(QWidget):
         self.num_constraints_plus_button.clicked.connect(lambda: self.change_spin_value(self.num_constraints_spin, 1))
         top_layout.addWidget(self.num_constraints_plus_button)
 
-        self.layout.addLayout(top_layout)
+        layout.addLayout(top_layout)
 
-        # Goal Function Section
         goal_container_layout = QHBoxLayout()
         goal_container_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         goal_layout = QHBoxLayout()
         goal_layout.setSpacing(5)
-        goal_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Align goal function section to the center
+        goal_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         goal_label = QLabel("Целевая функция:")
         goal_label.setStyleSheet("font-size: 11.5pt;")
         goal_layout.addWidget(goal_label)
@@ -103,7 +144,6 @@ class SimplexCalculator(QWidget):
         goal_layout.addLayout(self.goal_layout)
         goal_layout.addStretch(1)
 
-        # Arrow and type (min/max)
         arrow_label = QLabel("→")
         arrow_label.setStyleSheet("font-size: 13pt;")
         arrow_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -119,33 +159,30 @@ class SimplexCalculator(QWidget):
                     width: 0px; 
                     border: none; 
                 }
-                
                 QComboBox::down-arrow {
                     image: none;
                 }
             """)
         self.goal_type.setFixedWidth(55)
-        self.goal_type.setCurrentText("min")  # Set 'min' as the default selection
+        self.goal_type.setCurrentText("min")
         goal_layout.addWidget(self.goal_type)
 
         goal_container_layout.addLayout(goal_layout)
         goal_container_layout.addStretch(1)
-        self.layout.addLayout(goal_container_layout)
+        layout.addLayout(goal_container_layout)
 
-        # Constraints Section
         self.constraints_layout = QVBoxLayout()
-        self.constraints_layout.setSpacing(5)  # Reduce spacing between constraints
-        self.constraints_layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Align constraints layout to the top
-        self.layout.addLayout(self.constraints_layout)
+        self.constraints_layout.setSpacing(5)
+        self.constraints_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        layout.addLayout(self.constraints_layout)
 
-        # Solve Button
         self.solve_button = QPushButton("Решить")
         self.solve_button.setFixedWidth(100)
         self.solve_button.clicked.connect(self.solve)
-        self.layout.addWidget(self.solve_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.solve_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         bottom_layout = QHBoxLayout()
-        bottom_layout.setSpacing(1)
+        bottom_layout.setSpacing(5)
         bottom_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.toggle_theme_button = QPushButton("Изменить тему")
         self.toggle_theme_button.setFixedWidth(100)
@@ -157,9 +194,12 @@ class SimplexCalculator(QWidget):
         self.random_button.clicked.connect(self.generate_random_task)
         bottom_layout.addWidget(self.random_button, alignment=Qt.AlignmentFlag.AlignBottom)
 
-        self.layout.addLayout(bottom_layout)
-        self.setLayout(self.layout)
-        self.update_fields()
+        self.save_input_task_button = QPushButton("Сохранить задачу")
+        self.save_input_task_button.setFixedWidth(130)
+        self.save_input_task_button.clicked.connect(self.save_current_task)
+        bottom_layout.addWidget(self.save_input_task_button, alignment=Qt.AlignmentFlag.AlignBottom)
+
+        layout.addLayout(bottom_layout)
 
     def apply_theme(self):
         if self.is_dark_theme:
@@ -190,7 +230,6 @@ class SimplexCalculator(QWidget):
             spin_box.setValue(new_value)
 
     def update_fields(self):
-        # Update Goal Function Fields
         while self.goal_layout.count():
             widget = self.goal_layout.takeAt(0).widget()
             if widget:
@@ -202,7 +241,7 @@ class SimplexCalculator(QWidget):
         validator = QRegularExpressionValidator(regex)
 
         for i in range(num_vars):
-            if i > 0:  # Add `+` only after the first variable
+            if i > 0:
                 plus_label = QLabel("+")
                 plus_label.setStyleSheet("font-size: 12pt;")
                 plus_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -210,9 +249,9 @@ class SimplexCalculator(QWidget):
 
             input_field = QLineEdit()
             input_field.setValidator(validator)
-            input_field.setPlaceholderText("0")  # Default placeholder
+            input_field.setPlaceholderText("0")
             input_field.setStyleSheet("font-size: 12pt;")
-            input_field.setFixedWidth(55)  # Smaller box size
+            input_field.setFixedWidth(55)
             self.goal_inputs.append(input_field)
             self.goal_layout.addWidget(input_field)
 
@@ -221,7 +260,6 @@ class SimplexCalculator(QWidget):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.goal_layout.addWidget(label)
 
-        # Update Constraint Fields
         while self.constraints_layout.count():
             layout = self.constraints_layout.takeAt(0).layout()
             if layout:
@@ -235,11 +273,11 @@ class SimplexCalculator(QWidget):
         num_vars = self.num_vars_spin.value()
         for i in range(num_constraints):
             constraint_centered_layout = QHBoxLayout()
-            constraint_centered_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Align constraints to the center
+            constraint_centered_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
             constraint_centered_layout.addStretch(1)
 
             for j in range(num_vars):
-                if j > 0:  # Add `+` only after the first variable
+                if j > 0:
                     plus_label = QLabel("+")
                     plus_label.setStyleSheet("font-size: 12pt;")
                     plus_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -248,8 +286,8 @@ class SimplexCalculator(QWidget):
                 input_field = QLineEdit()
                 input_field.setValidator(validator)
                 input_field.setStyleSheet("font-size: 12pt;")
-                input_field.setPlaceholderText("0")  # Default placeholder
-                input_field.setFixedWidth(55)  # Smaller box size
+                input_field.setPlaceholderText("0")
+                input_field.setFixedWidth(55)
                 constraint_centered_layout.addWidget(input_field)
 
                 label = QLabel(f"x<sub>{j + 1}</sub>", self)
@@ -257,7 +295,6 @@ class SimplexCalculator(QWidget):
                 label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 constraint_centered_layout.addWidget(label)
 
-            # Add dropdown for relation
             relation = QComboBox()
             relation.addItems(["≤", "≥", "="])
             relation.setStyleSheet("""
@@ -279,7 +316,7 @@ class SimplexCalculator(QWidget):
             # Add RHS input
             rhs = QLineEdit()
             rhs.setValidator(validator)
-            rhs.setPlaceholderText("0")  # Default placeholder
+            rhs.setPlaceholderText("0")
             rhs.setStyleSheet("font-size: 12.5pt;")
             rhs.setFixedWidth(55)
             constraint_centered_layout.addWidget(rhs)
@@ -289,7 +326,6 @@ class SimplexCalculator(QWidget):
 
     def solve(self):
         try:
-            # Retrieve goal function coefficients
             goal_values = [parse_input_number(field.text()) if field.text() else 0.0 for field in self.goal_inputs]
             goal_type_selected = self.goal_type.currentText().lower()
 
@@ -304,7 +340,6 @@ class SimplexCalculator(QWidget):
                 # E.g., max 2X1 + 3X2 → F = 0 - (-2X1 -3X2) = 2X1 +3X2
                 adjusted_goal_values = [val for val in goal_values]
             else:
-                # Handle unexpected cases
                 QMessageBox.warning(
                     self,
                     "Input Error",
@@ -315,25 +350,20 @@ class SimplexCalculator(QWidget):
             num_vars = self.num_vars_spin.value()
             num_constraints = self.num_constraints_spin.value()
 
-            # Initialize decision variables (e.g., ['X1', 'X2', ..., 'Xn'])
             decision_vars = [f"X{i+1}" for i in range(num_vars)]
 
-            # Read all constraints
             constraints = []
             for i in range(num_constraints):
                 layout = self.constraints_layout.itemAt(i).layout()
                 if layout is None:
                     continue
 
-                # Collect all widgets in the layout
                 widgets = [layout.itemAt(j).widget() for j in range(layout.count())]
 
-                # Extract QLineEdits and QComboBox
                 qlineedits = [widget for widget in widgets if isinstance(widget, QLineEdit)]
                 qcomboboxes = [widget for widget in widgets if isinstance(widget, QComboBox)]
 
-                # Validate the number of widgets
-                expected_qlineedits = num_vars + 1  # Coefficients + RHS
+                expected_qlineedits = num_vars + 1
                 if len(qlineedits) < expected_qlineedits or len(qcomboboxes) < 1:
                     QMessageBox.warning(
                         self,
@@ -342,23 +372,19 @@ class SimplexCalculator(QWidget):
                     )
                     return
 
-                # Extract coefficients for decision variables
                 coeffs = []
                 for j in range(num_vars):
                     text = qlineedits[j].text()
                     coef = parse_input_number(text) if text else 0.0
                     coeffs.append(coef)
 
-                # Extract relation
                 relation = qcomboboxes[0].currentText()
 
-                # Extract RHS
                 rhs_value = parse_input_number(qlineedits[-1].text()) if qlineedits[-1].text() else 0.0
 
                 constraints.append((coeffs, relation, rhs_value))
 
-            # Assign Basic Variables
-            basic_vars = {}  # constraint_index: basic_var
+            basic_vars = {}
             added_basic_vars = set()
 
             for idx, (coeffs, relation, rhs) in enumerate(constraints):
@@ -379,11 +405,9 @@ class SimplexCalculator(QWidget):
                             valid_candidates.append(var)
 
                     if len(valid_candidates) == 1:
-                        # Assign the single valid candidate as the basic variable
                         basic_var = valid_candidates[0]
                         basic_vars[idx] = basic_var
                     elif len(valid_candidates) > 1:
-                        # If multiple valid candidates, assign the first one and inform the user
                         basic_var = valid_candidates[0]
                         basic_vars[idx] = basic_var
                         QMessageBox.information(
@@ -392,7 +416,6 @@ class SimplexCalculator(QWidget):
                             f"Для ограничения {idx + 1} было выбрано {basic_var} как базисная переменная."
                         )
                     else:
-                        # No suitable basic variable found, prompt to add a new one
                         reply = QMessageBox.question(
                             self,
                             "Отсутствует базисная переменная",
@@ -422,7 +445,6 @@ class SimplexCalculator(QWidget):
                             )
                             return
                 elif relation in ["≤", "≥"]:
-                    # Assign a new basic variable (slack or surplus) without adding it to tableau columns
                     next_num = num_vars + len(added_basic_vars) + 1
                     new_basic_var = f"X{next_num}"
                     basic_vars[idx] = new_basic_var
@@ -435,7 +457,6 @@ class SimplexCalculator(QWidget):
                     )
                     return
 
-            # Compile all decision variables excluding any that are basic variables
             final_decision_vars = [var for var in decision_vars if var not in basic_vars.values()]
 
             if len(final_decision_vars) < len(decision_vars):
@@ -445,7 +466,6 @@ class SimplexCalculator(QWidget):
                     "Некоторые переменные были автоматически исключены из целевой функции, так как они являются базисными переменными."
                 )
 
-            # Prepare the tableau data with fractions
             tableau_data = []
             row_names = []
 
@@ -453,16 +473,13 @@ class SimplexCalculator(QWidget):
                 basic_var = basic_vars[idx]
                 row_names.append(basic_var)
 
-                # Adjust coefficients based on relation
                 adjusted_rhs = rhs
                 adjusted_coeffs = coeffs.copy()
 
                 if relation == "≥":
-                    # For '≥' constraints, multiply coefficients and RHS by -1 to convert to '≤'
                     adjusted_coeffs = [-c for c in adjusted_coeffs]
                     adjusted_rhs = -rhs
 
-                # Prepare the row: [Si, X1, X2, ..., Xn] excluding basic variables
                 row = [Fraction(adjusted_rhs)]
                 for var in final_decision_vars:
                     var_index = decision_vars.index(var)
@@ -470,47 +487,38 @@ class SimplexCalculator(QWidget):
                     row.append(Fraction(coef))
                 tableau_data.append(row)
 
-            # Append the objective function row
             objective_row = [Fraction(0)]  # 0 for Si
             for var in final_decision_vars:
                 var_index = decision_vars.index(var)
-                # The goal function is already adjusted based on min or max
                 coef = adjusted_goal_values[var_index]
                 objective_row.append(Fraction(coef))
             row_names.append("F")
             tableau_data.append(objective_row)
 
-            # Define columns: Si + final_decision_vars
             columns = ["Si"] + final_decision_vars
 
-            # Create pandas DataFrame for the tableau
             df = DataFrame(tableau_data, columns=columns, index=row_names)
 
             copy_basic_vars = row_names[:-1]
             copy_non_basic_vars = columns[1:]
             maximization_flag = True if goal_type_selected == "max" else False
 
-            # Generate answer text for possible saving
             terms = []
             for i, coef in enumerate(goal_values):
                 if coef != 0:
-                    # Determine sign
                     if i == 0:
-                        # first term
                         if coef < 0:
                             sign = "-"
                         else:
                             sign = ""
                     else:
-                        # not first term
                         if coef > 0:
                             sign = "+"
                         else:
                             sign = "-"
 
-                    fcoef = format_task_number(Fraction(abs(coef)))  # use abs(coef) since sign is handled separately
+                    fcoef = format_task_number(Fraction(abs(coef)))
                     if abs(coef) == 1:
-                        # omit the '1'
                         terms.append(f"{sign}x{i + 1}")
                     else:
                         terms.append(f"{sign}{fcoef}x{i + 1}")
@@ -525,15 +533,12 @@ class SimplexCalculator(QWidget):
                 constraint_terms = []
                 for j, c in enumerate(coeffs):
                     if c != 0:
-                        # Determine sign for constraints
                         if j == 0:
-                            # first var in constraint
                             if c < 0:
                                 sign = "-"
                             else:
                                 sign = ""
                         else:
-                            # subsequent var
                             if c > 0:
                                 sign = "+"
                             else:
@@ -549,19 +554,6 @@ class SimplexCalculator(QWidget):
                     constraint_terms = ["0"]
 
                 frhs = format_task_number(Fraction(rhs))
-                # Join constraint terms with no extra space before sign because we included sign in terms
-                # But we may need a space
-                # constraint_terms now like ["+x2","-2x3"] so they start with sign
-                # For cleaner look: just join them: "x1 +x2 -x3"
-                # We can add space after sign if desired. For now let's keep as is and rely on sign inside terms.
-                # Actually, let's ensure a space after sign by modifying the appending logic:
-
-                # If we want "x1 + x2 - x3" with spaces around signs:
-                # Instead of adding sign directly adjacent to var, we can handle sign and spacing:
-                # Let's do this: first element no space before if positive.
-                # If first char is '+' or '-', add a space before if not first element.
-
-                # Actually easier: build a string from scratch:
                 constraint_str = constraint_terms[0]
                 for t in constraint_terms[1:]:
                     if t.startswith('+'):
@@ -571,18 +563,9 @@ class SimplexCalculator(QWidget):
                     else:
                         constraint_str += " " + t
 
-                # If the first term may start with '-', it's okay " - x2"
-                # If starts with '+', we omit plus for first?
-                # Already handled. It's complicated but let's keep consistent approach:
-                # Actually, we decided no plus for first var if positive. So no leading '+'
-
-                # For simplicity, let's not complicate spacing further now.
-                # Just trust we handled sign properly. If you want perfect formatting:
-                # If first char of constraint_str is '+', remove it.
                 if constraint_str.startswith('+'):
                     constraint_str = constraint_str[1:].strip()
 
-                # Add relation and RHS
                 constraint_str += f" {relation} {frhs}"
                 task_info += f"{constraint_str}\n"
 
@@ -592,7 +575,6 @@ class SimplexCalculator(QWidget):
             self.solution_window.show()
 
         except ValueError as e:
-            # Catch specific ValueError and provide detailed feedback
             QMessageBox.warning(
                 self,
                 "Input Error",
@@ -600,19 +582,414 @@ class SimplexCalculator(QWidget):
             )
             return
 
+    def save_current_task(self):
+        """
+        Save the currently inputted task in a txt file in the required format:
+        Line 1: num_vars num_constraints
+        Line 2: goal_coefs ... goal_type
+        Then constraints each line: coefs ... relation rhs
+        """
+        # Gather current input
+        num_vars = self.num_vars_spin.value()
+        num_constraints = self.num_constraints_spin.value()
+
+        # Parse goal function coefficients
+        goal_values = []
+        for field in self.goal_inputs:
+            txt = field.text().strip()
+            if txt:
+                val = parse_input_number(txt)
+            else:
+                val = Fraction(0)
+            goal_values.append(val)
+
+        goal_type_selected = self.goal_type.currentText().lower()
+
+        # Parse constraints
+        constraints = []
+        for i in range(num_constraints):
+            layout = self.constraints_layout.itemAt(i).layout()
+            if layout is None:
+                continue
+
+            widgets = [layout.itemAt(j).widget() for j in range(layout.count())]
+
+            qlineedits = [w for w in widgets if isinstance(w, QLineEdit)]
+            qcomboboxes = [w for w in widgets if isinstance(w, QComboBox)]
+
+            expected_qlineedits = num_vars + 1
+            if len(qlineedits) < expected_qlineedits or len(qcomboboxes) < 1:
+                QMessageBox.warning(
+                    self,
+                    "Input Error",
+                    f"Уравнение {i + 1} имеет неверные поля ввода."
+                )
+                return
+
+            coeffs = []
+            for j in range(num_vars):
+                text = qlineedits[j].text().strip()
+                if text:
+                    c = parse_input_number(text)
+                else:
+                    c = Fraction(0)
+                coeffs.append(c)
+
+            relation = qcomboboxes[0].currentText()
+            rhs_text = qlineedits[-1].text().strip()
+            rhs_val = parse_input_number(rhs_text) if rhs_text else Fraction(0)
+
+            constraints.append((coeffs, relation, rhs_val))
+
+        # Create default filename
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        default_filename = f"simple_task_{num_vars}_{num_constraints}_{now_str}.txt"
+
+        # Open file dialog to save
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            "Сохранить задачу",
+            QDir.homePath() + "/" + default_filename,
+            "Text Files (*.txt);;All Files (*)"
+        )
+        if not filepath:
+            return  # user canceled
+
+        # Write to file
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                # Line 1: num_vars num_constraints
+                f.write(f"{num_vars} {num_constraints}\n")
+
+                # Line 2: goal_coefs ... goal_type
+                # Convert goal_values to str. Just use numerator/denominator if fraction:
+                goal_line_parts = []
+                for gv in goal_values:
+                    if gv.denominator == 1:
+                        goal_line_parts.append(str(gv.numerator))
+                    else:
+                        goal_line_parts.append(f"{gv.numerator}/{gv.denominator}")
+                goal_line = " ".join(goal_line_parts) + " " + goal_type_selected
+                f.write(goal_line + "\n")
+
+                # Constraints
+                for (coeffs, relation, rhs) in constraints:
+                    # Convert coeffs and rhs to strings
+                    c_strs = []
+                    for c in coeffs:
+                        if c.denominator == 1:
+                            c_strs.append(str(c.numerator))
+                        else:
+                            c_strs.append(f"{c.numerator}/{c.denominator}")
+
+                    if rhs.denominator == 1:
+                        rhs_str = str(rhs.numerator)
+                    else:
+                        rhs_str = f"{rhs.numerator}/{rhs.denominator}"
+
+                    # relation should be converted to original: if we have "≤","≥","="?
+                    # Original input format maybe used <, <=, >, >=, =. Let's revert them:
+                    # If user typed them from UI as "≤", "≥", "=" we must choose consistent original sign
+                    # The original format said we can keep the sign as is: if we want ASCII:
+                    # Replace "≤" with "<=", "≥" with ">=" for saving:
+                    if relation == "≤":
+                        rel_str = "<="
+                    elif relation == "≥":
+                        rel_str = ">="
+                    else:
+                        rel_str = "="
+
+                    f.write(" ".join(c_strs) + f" {rel_str} {rhs_str}\n")
+
+            QMessageBox.information(self, "Успех", f"Задача сохранена в файл:\n{filepath}")
+        except Exception as e:
+            QMessageBox.warning(self, "Ошибка записи файла", f"Не удалось записать файл:\n{e}")
+
+    def load_task_from_file(self):
+        filepath, _ = QFileDialog.getOpenFileName(self, "Выбрать файл с задачей", QDir.homePath(), "Text Files (*.txt);;All Files (*)")
+        if filepath:
+            with open(filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+            self.text_edit.setPlainText(content)
+
+    def solve_text_mode(self):
+        text = self.text_edit.toPlainText().strip()
+        if not text:
+            QMessageBox.warning(self, "Ошибка", "Текст задачи пуст.")
+            return
+
+        lines = text.split('\n')
+        if len(lines) < 2:
+            QMessageBox.warning(self, "Ошибка", "Недостаточно строк.")
+            return
+
+        first_line = lines[0].strip().split()
+        if len(first_line) != 2:
+            QMessageBox.warning(self, "Ошибка", "Первая строка: 2 числа (переменные и ограничения).")
+            return
+
+        try:
+            num_vars = int(first_line[0])
+            num_constraints = int(first_line[1])
+        except ValueError:
+            QMessageBox.warning(self, "Ошибка", "Первая строка нечисловая.")
+            return
+
+        if num_vars > 25 or num_constraints > 25:
+            QMessageBox.warning(self, "Отказ", "Не больше 25 переменных и уравнений")
+
+        second_line = lines[1].strip().split()
+        if len(second_line) != (num_vars+1):
+            QMessageBox.warning(self, "Ошибка", "Вторая строка: коэфф. + min/max")
+            return
+
+        goal_values_str = second_line[:num_vars]
+        goal_type_str = second_line[num_vars].lower()
+        if goal_type_str not in ["min","max"]:
+            QMessageBox.warning(self,"Ошибка","Должно быть min или max в конце второй строки.")
+            return
+
+        goal_values = []
+        for gs in goal_values_str:
+            val = parse_input_number(gs)
+            goal_values.append(val)
+
+        if len(lines)<2+num_constraints:
+            QMessageBox.warning(self,"Ошибка","Ограничений меньше, чем указано.")
+            return
+
+        allowed_relations = {"<":"≤","<=":"≤",">":"≥",">=":"≥","=":"="}
+        constraints = []
+        from_line = 2
+        for i in range(num_constraints):
+            line = lines[from_line+i].strip().split()
+            if len(line)!=(num_vars+2):
+                QMessageBox.warning(self,"Ошибка",f"Огр. {i+1} неверный формат.")
+                return
+            coeffs_str = line[:num_vars]
+            relation_str = line[num_vars]
+            rhs_str = line[num_vars+1]
+            if relation_str not in allowed_relations:
+                QMessageBox.warning(self,"Ошибка",f"Неверный знак в огр. {i+1}")
+                return
+            relation = allowed_relations[relation_str]
+
+            coeffs=[]
+            for cs in coeffs_str:
+                c=parse_input_number(cs)
+                coeffs.append(c)
+            rhs_val = parse_input_number(rhs_str)
+            constraints.append((coeffs,relation,rhs_val))
+
+        num_vars_i = num_vars
+        decision_vars = [f"X{i+1}" for i in range(num_vars_i)]
+        goal_type_selected = goal_type_str
+        if goal_type_selected=="min":
+            adjusted_goal_values = [-val for val in goal_values]
+        else:
+            adjusted_goal_values = [val for val in goal_values]
+
+
+        basic_vars = {}
+        added_basic_vars = set()
+        for idx,(coeffs,relation,rhs) in enumerate(constraints):
+            if relation=="=":
+                basic_var_candidates=[var for var,coef in zip(decision_vars,coeffs) if abs(coef)==1.0]
+                valid_candidates=[]
+                for var in basic_var_candidates:
+                    var_index=decision_vars.index(var)
+                    appears_in_others=False
+                    for other_idx,(other_coeffs,_,_) in enumerate(constraints):
+                        if other_idx!=idx and other_coeffs[var_index]!=0.0:
+                            appears_in_others=True
+                            break
+                    if not appears_in_others:
+                        valid_candidates.append(var)
+                if len(valid_candidates)==1:
+                    basic_vars[idx]=valid_candidates[0]
+                elif len(valid_candidates)>1:
+                    basic_vars[idx]=valid_candidates[0]
+
+                else:
+                    next_num=num_vars_i+len(added_basic_vars)+1
+                    new_basic_var = f"X{next_num}"
+                    basic_vars[idx]=new_basic_var
+                    added_basic_vars.add(new_basic_var)
+            elif relation in ["≤","≥"]:
+                next_num=num_vars_i+len(added_basic_vars)+1
+                new_basic_var=f"X{next_num}"
+                basic_vars[idx]=new_basic_var
+                added_basic_vars.add(new_basic_var)
+            else:
+                QMessageBox.warning(self,"Ошибка",f"Неверное отношение {relation}")
+                return
+
+        final_decision_vars=[var for var in decision_vars if var not in basic_vars.values()]
+
+
+        tableau_data=[]
+        row_names=[]
+        for idx,(coeffs,relation,rhs) in enumerate(constraints):
+            basic_var=basic_vars[idx]
+            row_names.append(basic_var)
+            adjusted_rhs=rhs
+            adjusted_coeffs=coeffs.copy()
+            if relation=="≥":
+                adjusted_coeffs = [-c for c in adjusted_coeffs]
+                adjusted_rhs=-rhs
+            row=[Fraction(adjusted_rhs)]
+            for var in final_decision_vars:
+                var_index=decision_vars.index(var)
+                coef= adjusted_coeffs[var_index] if var_index<len(adjusted_coeffs) else 0.0
+                row.append(Fraction(coef))
+            tableau_data.append(row)
+
+        objective_row=[Fraction(0)]
+        for var in final_decision_vars:
+            var_index=decision_vars.index(var)
+            coef=adjusted_goal_values[var_index]
+            objective_row.append(Fraction(coef))
+        row_names.append("F")
+        tableau_data.append(objective_row)
+
+        columns=["Si"]+final_decision_vars
+        df=DataFrame(tableau_data,columns=columns,index=row_names)
+
+        is_max=(goal_type_selected=="max")
+
+        sw=SimplexSolutionWindow(dark_theme=self.is_dark_theme,task_info="From Text Mode")
+        final_df, final_basic_vars, final_non_basic_vars, elapsed_time, status = sw.run_simplex_silently(df,row_names[:-1],final_decision_vars,is_max)
+
+        reverse_relations = {"≤": "<=", "≥": ">=", "=": "="}
+        task_info_str = f"{num_vars} {num_constraints}\n"
+        # goal line
+        goal_line_parts = []
+        for gv in goal_values:
+            if gv.denominator == 1:
+                goal_line_parts.append(str(gv.numerator))
+            else:
+                goal_line_parts.append(f"{gv.numerator}/{gv.denominator}")
+        goal_line = " ".join(goal_line_parts) + " " + goal_type_str
+        task_info_str += goal_line + "\n"
+
+        for (coeffs, relation, rhs) in constraints:
+            c_strs = []
+            for c in coeffs:
+                if c.denominator == 1:
+                    c_strs.append(str(c.numerator))
+                else:
+                    c_strs.append(f"{c.numerator}/{c.denominator}")
+            if rhs.denominator == 1:
+                rhs_str = str(rhs.numerator)
+            else:
+                rhs_str = f"{rhs.numerator}/{rhs.denominator}"
+            rel_str = reverse_relations[relation]
+            task_info_str += " ".join(c_strs) + f" {rel_str} {rhs_str}\n"
+
+        if status == "optimal":
+            F_row_index = len(final_df.index) - 1
+            optimal_value = final_df.iloc[F_row_index, 0]
+            if is_max:
+                optimal_value = optimal_value * -1
+
+            variable_values = {}
+            for i, var in enumerate(final_basic_vars):
+                val = final_df.iloc[i, 0]
+                variable_values[var] = val
+            for var in final_non_basic_vars:
+                variable_values[var] = Fraction(0)
+
+            result_str = f"Оптимальное значение (F): {optimal_value}\n\nОптимальное решение:\n"
+            for var in sorted(variable_values.keys()):
+                result_str += f"{var} = {variable_values[var]}\n"
+            result_str += f"\nВремя вычисления: {elapsed_time:.10f} секунд"
+
+            QMessageBox.information(self, "Результат", result_str)
+
+            self.save_text_mode_solution(task_info_str, result_str, is_max)
+        elif status == "no_solution":
+            QMessageBox.information(self, "Результат", "Нет решения для данной задачи.")
+        elif status == "iteration_limit":
+            QMessageBox.information(self, "Результат", "Достигнут предел итераций без нахождения оптимума.")
+
+    def save_text_mode_solution(self, task_info_str, solution_str, is_max):
+        """
+        Prompt user to select format (txt or html) and file path, then save using save_answer.py methods.
+        """
+        # Show dialog to choose format
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Сохранить ответ")
+        v_layout = QVBoxLayout(dialog)
+
+        info_label = QLabel("Выберите формат для сохранения ответа:")
+        v_layout.addWidget(info_label)
+
+        rb_txt = QRadioButton("Текстовый файл (.txt)")
+        rb_html = QRadioButton("HTML файл (.html)")
+        rb_txt.setChecked(True)
+
+        v_layout.addWidget(rb_txt)
+        v_layout.addWidget(rb_html)
+
+        h_layout = QHBoxLayout()
+        save_button = QPushButton("Сохранить")
+        cancel_button = QPushButton("Отмена")
+        h_layout.addWidget(save_button)
+        h_layout.addWidget(cancel_button)
+        v_layout.addLayout(h_layout)
+
+        def do_save():
+            dialog.accept()
+            if rb_txt.isChecked():
+                ext = "txt"
+                filter_str = "Text Files (*.txt);;All Files (*)"
+            else:
+                ext = "html"
+                filter_str = "HTML Files (*.html);;All Files (*)"
+
+            rows = 0
+            cols = 0
+            first_line = task_info_str.split('\n', 1)[0].strip()
+            parts = first_line.split()
+            if len(parts) == 2:
+                try:
+                    rows = int(parts[1])
+                    cols = int(parts[0])
+                except:
+                    pass
+
+            now_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            default_filename = generate_default_filename(cols, rows, is_max, ext)
+
+            filepath, _ = QFileDialog.getSaveFileName(
+                self,
+                "Сохранить ответ",
+                QDir.homePath() + "/" + default_filename,
+                filter_str
+            )
+            if not filepath:
+                return
+
+            if rb_txt.isChecked():
+                save_as_text(rows, cols, is_max, task_info_str, "", "", solution_str, filepath)
+            else:
+                save_as_html(rows, cols, is_max, task_info_str, "", "", solution_str, filepath)
+
+            QMessageBox.information(self, "Успех", f"Ответ сохранён в файл:\n{filepath}")
+
+        save_button.clicked.connect(do_save)
+        cancel_button.clicked.connect(dialog.reject)
+
+        dialog.exec()
+
     def generate_random_task(self):
         # Generate random coefficients for goal function and constraints
         num_vars = self.num_vars_spin.value()
         num_constraints = self.num_constraints_spin.value()
 
-        # For goal function inputs
         for field in self.goal_inputs:
             field.setText(self.random_coef())
 
-        # For constraints:
-        # self.constraints_layout contains QHBoxLayouts for each constraint
-        # Each constraint line has num_vars * (QLineEdit, QLabel) pairs + one QComboBox + one QLineEdit (RHS)
-        # Extract them similarly as in solve() method
         for i in range(num_constraints):
             layout = self.constraints_layout.itemAt(i).layout()
             if layout is None:
@@ -622,16 +999,11 @@ class SimplexCalculator(QWidget):
             qlineedits = [w for w in widgets if isinstance(w, QLineEdit)]
             qcomboboxes = [w for w in widgets if isinstance(w, QComboBox)]
 
-            # Set coefficients
             for j in range(num_vars):
                 qlineedits[j].setText(self.random_coef())
 
-            # Set relation randomly?
-            # qcomboboxes[0].setCurrentText(random.choice(["≤", "≥", "="]))
-            # Or keep it fixed to ≤ just for fun:
             qcomboboxes[0].setCurrentText(random.choice(["≤", "≥", "="]))
 
-            # Set RHS
             qlineedits[-1].setText(self.random_coef())
 
     def random_coef(self):
@@ -641,32 +1013,27 @@ class SimplexCalculator(QWidget):
             val = random.randint(-100, 100)
             return str(val)
         else:
-            # Decimal: val.x where x can be 0.5 or 0.25
             val = random.randint(-100, 100)
             decimal_part = random.choice([".5", ".25"])
-            # If val == 0, ensure not to return just '.5', so keep val anyway
             return f"{val}{decimal_part}"
 
 
 def parse_input_number(text):
     text = text.strip()
     if not text:
-        return Fraction(0)  # default if empty
+        return Fraction(0)
 
     # Replace comma with dot for decimals
     text = text.replace(',', '.')
 
     if '/' in text:
-        # Fraction form
         parts = text.split('/')
         if len(parts) != 2:
             raise ValueError(f"Invalid fraction format: {text}")
 
         num_str, den_str = parts
 
-        # Disallow decimals in fraction parts
         if '.' in num_str or '.' in den_str:
-            # Fractions must be integers only
             raise ValueError("Fractions must be integers only (e.g. '3/2', not '3.5/2').")
 
         try:
@@ -680,7 +1047,6 @@ def parse_input_number(text):
 
         return Fraction(numerator, denominator)
     else:
-        # No fraction slash, could be integer or decimal
         if '.' in text:
             # Decimal number, convert to fraction by counting decimals
             # e.g. 2.1 => integral:2, decimal:1 digit -> 2.1 = 21/10
@@ -713,15 +1079,12 @@ def parse_input_number(text):
                 val = int(text)  # If user typed something like '2' or '-3'
                 return Fraction(val)
             except ValueError:
-                # If it's not integer, maybe empty or invalid?
-                # If empty handled above. If invalid, raise error.
                 raise ValueError(f"Invalid integer: {text}")
 
 
 def format_task_number(num):
-    # num is Fraction
     if num.denominator == 1:
-        return str(num.numerator)  # no decimal .0
+        return str(num.numerator)
     else:
         return f"{num.numerator}/{num.denominator}"
 
@@ -737,6 +1100,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(path.join(APP_PATH, "icons/solution.ico")))
     window = SimplexCalculator()
-    window.resize(800, 600)  # Adjusted initial window size
+    window.resize(800, 600)
     window.show()
     sys.exit(app.exec())

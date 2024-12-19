@@ -21,7 +21,7 @@ from save_answer import generate_default_filename, save_as_text, save_as_html
 class SimplexCalculator(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Симплекс Метод Калькулятор v1.2.1")
+        self.setWindowTitle("Симплекс Метод Калькулятор v1.3.0")
         self.is_dark_theme = False
         self.initUI()
 

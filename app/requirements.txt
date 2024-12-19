@@ -1,2 +1,3 @@
 pandas==2.2.3
 PyQt6==6.7.1
+QDarkStyle==3.2.3

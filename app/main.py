@@ -752,8 +752,12 @@ class SimplexCalculator(QWidget):
 
         goal_values = []
         for gs in goal_values_str:
-            val = parse_input_number(gs)
-            goal_values.append(val)
+            try:
+                val = parse_input_number(gs)
+                goal_values.append(val)
+            except ValueError as e:
+                QMessageBox.warning(self, "Ошибка", e.args[0])
+                return
 
         if len(lines)<2+num_constraints:
             QMessageBox.warning(self,"Ошибка","Ограничений меньше, чем указано.")
@@ -777,8 +781,12 @@ class SimplexCalculator(QWidget):
 
             coeffs=[]
             for cs in coeffs_str:
-                c=parse_input_number(cs)
-                coeffs.append(c)
+                try:
+                    c=parse_input_number(cs)
+                    coeffs.append(c)
+                except ValueError as e:
+                    QMessageBox.warning(self, "Ошибка", e.args[0])
+                    return
             rhs_val = parse_input_number(rhs_str)
             constraints.append((coeffs,relation,rhs_val))
 
@@ -1025,18 +1033,21 @@ def parse_input_number(text):
     if not text:
         return Fraction(0)
 
+    if 'x' in text.lower():
+        raise ValueError(f"Текстовый режим не позволяет вводить имена переменных: '{text}'")
+
     # Replace comma with dot for decimals
     text = text.replace(',', '.')
 
     if '/' in text:
         parts = text.split('/')
         if len(parts) != 2:
-            raise ValueError(f"Invalid fraction format: {text}")
+            raise ValueError(f"Неверный формат дроби: {text}")
 
         num_str, den_str = parts
 
         if '.' in num_str or '.' in den_str:
-            raise ValueError("Fractions must be integers only (e.g. '3/2', not '3.5/2').")
+            raise ValueError("Дроби должны быть только целочисленными (e.g. '3/2', not '3.5/2').")
 
         try:
             numerator = int(num_str)
@@ -1045,7 +1056,7 @@ def parse_input_number(text):
             raise ValueError(f"Invalid integer in fraction: {text}")
 
         if denominator == 0:
-            raise ValueError("Division by zero in fraction")
+            raise ValueError("Деление на ноль в дроби")
 
         return Fraction(numerator, denominator)
     else:

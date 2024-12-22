@@ -11,11 +11,13 @@ import time
 
 
 class SimplexSolutionWindow(QWidget):
-    def __init__(self, dark_theme, task_info):
+    def __init__(self, dark_theme, task_info, original_constraints=None, num_vars=0):
         super().__init__()
         self.setWindowTitle("Simplex Method Solution Steps")
         self.is_dark_theme = dark_theme
         self.task_info = task_info
+        self.original_constraints = original_constraints if original_constraints else []
+        self.num_vars = num_vars
         self.calculation_start_time = None
         self.calculation_end_time = None
         self.elapsed_time = None
@@ -123,8 +125,12 @@ class SimplexSolutionWindow(QWidget):
 
         self.update_navigation_buttons()
 
+        check = ""
         if len(self.steps) == 1:
-            self.perform_simplex_method(tableau_df)
+            check = self.perform_simplex_method(tableau_df)
+
+        if check is not None and check == "no_solution":
+            self.solution_label.setText("Нет решения (возврат алгоритма преобразования матриц).")
 
         self.display_current_steps()
 
@@ -274,13 +280,12 @@ class SimplexSolutionWindow(QWidget):
 
                         continue
                     else:
-                        # No solution
                         QMessageBox.warning(
                             self,
-                            "No Solution",
-                            "No solution exists for this problem."
+                            "Нет решения",
+                            "Нет решения для этого задания."
                         )
-                        return
+                        return "no_solution"
                 else:
                     # Rule 2: Check if optimal solution is found
                     F_row_index = len(df.index) - 1
@@ -339,8 +344,8 @@ class SimplexSolutionWindow(QWidget):
 
         QMessageBox.warning(
             self,
-            "Iteration Limit Reached",
-            "The maximum number of iterations was reached without finding an optimal solution."
+            "Лимит итераций",
+            "Максимальное чисто итераций алгоритма было достигнуто без нахождения оптимального решения."
         )
         return
 
@@ -426,6 +431,10 @@ class SimplexSolutionWindow(QWidget):
                 value = df.iloc[i, 0]
                 variable_values[var] = value
 
+            if not self.final_feasibility_check(variable_values):
+                self.solution_label.setText("Нет решения (итоговые переменные не удовлетворяют ограничениям).")
+                return
+
             solution_str = f"Оптимальное значение (F): {optimal_value}\n\n"
             solution_str += "Оптимальное решение:\n"
             for var in sorted(variable_values.keys()):
@@ -448,6 +457,29 @@ class SimplexSolutionWindow(QWidget):
                 f"An error occurred while displaying the optimal solution: {e}"
             )
             return
+
+    def final_feasibility_check(self, variable_values):
+        """
+        variable_values: dict { "X1": fraction, "X2": fraction, ... }
+        returns True if all constraints are satisfied, otherwise False
+        """
+        tol = Fraction(0)  # If you want a small tolerance for floats, but here we have Fractions
+
+        for (coeffs, relation, rhs) in self.original_constraints:
+            LHS = sum(coeffs[j] * variable_values.get(f"X{j + 1}", Fraction(0)) for j in range(self.num_vars))
+            if relation == "≤":
+                if LHS > rhs + tol:
+                    return False
+            elif relation == "≥":
+                if LHS < rhs - tol:
+                    return False
+            elif relation == "=":
+                if LHS != rhs:
+                    return False
+            else:
+                # Unexpected relation?
+                return False
+        return True
 
     def run_simplex_silently(self, df, basic_vars, non_basic_vars, is_maximization):
         """
@@ -505,6 +537,16 @@ class SimplexSolutionWindow(QWidget):
                     if not positive_F_entries:
                         end_time = time.perf_counter()
                         elapsed_time = end_time - start_time
+
+                        variable_values = {}
+                        for i, var in enumerate(basic_vars):
+                            variable_values[var] = df.iloc[i, 0]
+                        for var in non_basic_vars:
+                            variable_values[var] = Fraction(0)
+
+                        if not self.final_feasibility_check(variable_values):
+                            return df, basic_vars, non_basic_vars, elapsed_time, "no_solution"
+
                         return df, basic_vars, non_basic_vars, elapsed_time, "optimal"
                     else:
                         done_pivot = False
@@ -529,6 +571,16 @@ class SimplexSolutionWindow(QWidget):
                         if not done_pivot:
                             end_time = time.perf_counter()
                             elapsed_time = end_time - start_time
+
+                            variable_values = {}
+                            for i, var in enumerate(basic_vars):
+                                variable_values[var] = df.iloc[i, 0]
+                            for var in non_basic_vars:
+                                variable_values[var] = Fraction(0)
+
+                            if not self.final_feasibility_check(variable_values):
+                                return df, basic_vars, non_basic_vars, elapsed_time, "no_solution"
+
                             return df, basic_vars, non_basic_vars, elapsed_time, "optimal"
             QMessageBox.warning(
                 self,

@@ -570,7 +570,8 @@ class SimplexCalculator(QWidget):
                 task_info += f"{constraint_str}\n"
 
             # Display the initial tableau in the solution window
-            self.solution_window = SimplexSolutionWindow(dark_theme=self.is_dark_theme, task_info=task_info)
+            self.solution_window = SimplexSolutionWindow(dark_theme=self.is_dark_theme, task_info=task_info,
+                                                         original_constraints=constraints, num_vars=num_vars)
             self.solution_window.add_step(df, copy_basic_vars, copy_non_basic_vars, is_maximization=maximization_flag)
             self.solution_window.show()
 
@@ -857,7 +858,8 @@ class SimplexCalculator(QWidget):
 
         is_max=(goal_type_selected=="max")
 
-        sw=SimplexSolutionWindow(dark_theme=self.is_dark_theme,task_info="From Text Mode")
+        sw=SimplexSolutionWindow(dark_theme=self.is_dark_theme,task_info="From Text Mode",
+                                 original_constraints=constraints, num_vars=num_vars)
         final_df, final_basic_vars, final_non_basic_vars, elapsed_time, status = sw.run_simplex_silently(df,row_names[:-1],final_decision_vars,is_max)
 
         reverse_relations = {"≤": "<=", "≥": ">=", "=": "="}

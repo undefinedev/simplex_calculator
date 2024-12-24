@@ -23,7 +23,7 @@ jobs:
 
   build-win:
     name: Windows build
-    needs: create_release
+    needs: create-release
     runs-on: ['windows-latest']
 
     steps:
@@ -52,7 +52,7 @@ jobs:
 
   build-lin:
     name: Ubuntu build
-    needs: create_release
+    needs: create-release
     runs-on: [ 'ubuntu-latest' ]
 
     steps:
@@ -81,7 +81,7 @@ jobs:
 
   build-mac:
     name: MacOS build
-    needs: create_release
+    needs: create-release
     runs-on: ['macos-latest']
 
     steps:

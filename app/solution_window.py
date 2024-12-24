@@ -344,7 +344,7 @@ class SimplexSolutionWindow(QWidget):
 
         QMessageBox.warning(
             self,
-            "Лимит итераций",
+            "Лимит итераций достигнут",
             "Максимальное чисто итераций алгоритма было достигнуто без нахождения оптимального решения."
         )
         return
@@ -584,8 +584,8 @@ class SimplexSolutionWindow(QWidget):
                             return df, basic_vars, non_basic_vars, elapsed_time, "optimal"
             QMessageBox.warning(
                 self,
-                "Iteration Limit Reached",
-                "The maximum number of iterations was reached without finding an optimal solution."
+                "Лимит итераций достигнут",
+                "Максимальное чисто итераций алгоритма было достигнуто без нахождения оптимального решения."
             )
             end_time = time.perf_counter()
             return df, basic_vars, non_basic_vars, (end_time - start_time), "iteration_limit"

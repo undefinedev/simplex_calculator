@@ -34,7 +34,7 @@ class SimplexCalculator(QWidget):
         gui_mode_widget = QWidget()
         gui_layout = QVBoxLayout(gui_mode_widget)
         self.create_gui_tab(gui_layout)
-        self.tab_widget.addTab(gui_mode_widget, "GUI Mode")
+        self.tab_widget.addTab(gui_mode_widget, "Графический режим")
 
         # Text mode tab
         text_mode_widget = QWidget()
@@ -42,10 +42,10 @@ class SimplexCalculator(QWidget):
 
         info_label = QLabel("Введите задачу в текстовом формате или загрузите из файла.\n"
                             "Формат:\n"
-                            "Первая строка: кол-во_переменных кол-во_ограничений\n"
-                            "Вторая строка: коэфф. цел. функции и min/max\n"
-                            "Далее ограничения: коэффы, знак, правая часть.\n"
-                            "Поддержка чисел: целые, десятичные (2.5), дроби (3/2).")
+                            "Первая строка: кол-во_переменных кол-во_уравнений\n"
+                            "Вторая строка: коэфф. целевой функции и min/max\n"
+                            "Далее ограничения: коэфф., знак (<=, =, >=), правая часть.\n"
+                            "Поддержка ввода чисел: целые, десятичные (2.5), дроби (3/2).")
         text_layout.addWidget(info_label)
 
         self.text_edit = QPlainTextEdit()
@@ -60,15 +60,25 @@ class SimplexCalculator(QWidget):
         self.solve_text_button.clicked.connect(self.solve_text_mode)
         h_layout.addWidget(self.solve_text_button)
 
-        self.back_to_gui_button = QPushButton("Вернуться в GUI режим")
-        self.back_to_gui_button.clicked.connect(lambda: self.tab_widget.setCurrentIndex(0))
-        h_layout.addWidget(self.back_to_gui_button)
-
         text_layout.addLayout(h_layout)
-        self.tab_widget.addTab(text_mode_widget, "Text Mode")
+        self.tab_widget.addTab(text_mode_widget, "Текстовый режим")
 
         main_layout = QVBoxLayout()
         main_layout.addWidget(self.tab_widget)
+
+        watermark_label = QLabel()
+        watermark_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        watermark_label.setTextFormat(Qt.TextFormat.RichText)
+        watermark_label.setOpenExternalLinks(True)
+        watermark_label.setText(
+            ' <span style="color: rgba(128, 128, 128, 50%); font-size: 7pt;">'
+            ' <a href="https://github.com/undefinedev/simplex_calculator" style="color: rgba(128, 128, 128, 50%);'
+            ' text-decoration: none;">undefinedev © 2024</a>'
+            '</span>'
+        )
+
+        main_layout.addWidget(watermark_label)
+
         self.setLayout(main_layout)
 
         self.update_fields()
@@ -780,15 +790,16 @@ class SimplexCalculator(QWidget):
             relation = allowed_relations[relation_str]
 
             coeffs=[]
-            for cs in coeffs_str:
-                try:
+            try:
+                for cs in coeffs_str:
                     c=parse_input_number(cs)
                     coeffs.append(c)
-                except ValueError as e:
-                    QMessageBox.warning(self, "Ошибка", e.args[0])
-                    return
-            rhs_val = parse_input_number(rhs_str)
-            constraints.append((coeffs,relation,rhs_val))
+                rhs_val = parse_input_number(rhs_str)
+                constraints.append((coeffs, relation, rhs_val))
+            except ValueError as e:
+                QMessageBox.warning(self, "Ошибка", e.args[0])
+                return
+
 
         num_vars_i = num_vars
         decision_vars = [f"X{i+1}" for i in range(num_vars_i)]
@@ -1047,13 +1058,13 @@ def parse_input_number(text):
         num_str, den_str = parts
 
         if '.' in num_str or '.' in den_str:
-            raise ValueError("Дроби должны быть только целочисленными (e.g. '3/2', not '3.5/2').")
+            raise ValueError("Дроби должны быть только с целыми числами (напр. '3/2', нет '3.5/2').")
 
         try:
             numerator = int(num_str)
             denominator = int(den_str)
         except ValueError:
-            raise ValueError(f"Invalid integer in fraction: {text}")
+            raise ValueError(f"Не целые числа в дроби: {text}")
 
         if denominator == 0:
             raise ValueError("Деление на ноль в дроби")

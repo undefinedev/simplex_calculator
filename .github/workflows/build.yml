@@ -45,7 +45,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        upload_url: ${{ needs.create-release.outputs.release_url }}
         asset_path: dist/Simplex_Method.exe
         asset_name: Simplex_Method.exe
         asset_content_type: application/exe
@@ -74,9 +74,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          upload_url: ${{ needs.create-release.outputs.release_url }}
           asset_path: dist/Simplex_Method
-          asset_name: Simplex_Method.bin
+          asset_name: Simplex_Method_Linux.bin
           asset_content_type: application/bin
 
   build-mac:
@@ -103,7 +103,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          upload_url: ${{ needs.create-release.outputs.release_url }}
           asset_path: dist/Simplex_Method
-          asset_name: SimplexMethod.bin
+          asset_name: SimplexMethodMacOS.bin
           asset_content_type: application/bin

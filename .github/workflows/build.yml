@@ -4,9 +4,26 @@ on:
   push:
     tags:
       - 'b*'
+      - 'v*'
 
 jobs:
+  create-release:
+    name: Create release
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ['ubuntu-latest']
+    outputs:
+      release_url: ${{ steps.create_release.outputs.release_url }}
+    steps:
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+
   build-win:
+    name: Windows build
+    needs: create_release
     runs-on: ['windows-latest']
 
     steps:
@@ -20,9 +37,22 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         path: dist/Simplex_Method.exe
-        name: Simplex_Method_win
+        name: Simplex_Method_windows
+
+    - name: Upload release
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: dist/Simplex_Method.exe
+        asset_name: Simplex_Method.exe
+        asset_content_type: application/exe
 
   build-lin:
+    name: Ubuntu build
+    needs: create_release
     runs-on: [ 'ubuntu-latest' ]
 
     steps:
@@ -36,9 +66,22 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: dist/Simplex_Method
-          name: Simplex_Method_lin
+          name: Simplex_Method_linux
+
+      - name: Upload release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: dist/Simplex_Method
+          asset_name: Simplex_Method.bin
+          asset_content_type: application/bin
 
   build-mac:
+    name: MacOS build
+    needs: create_release
     runs-on: ['macos-latest']
 
     steps:
@@ -52,4 +95,15 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: dist/*
-          name: macos
+          name: Simplex_Method_macos
+
+      - name: Upload release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: dist/Simplex_Method
+          asset_name: SimplexMethod.bin
+          asset_content_type: application/bin
